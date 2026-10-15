@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "921441058212",
+    "project_id": "careermate-886ab",
+    "storage_bucket": "careermate-886ab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:921441058212:android:1f8e3f7ec6ac7e86cb5531",
+        "android_client_info": {
+          "package_name": "in.careermate.careermate"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "921441058212-gugosnqabsjqeid8eqnf2ira89cp9bkp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.careermate.careermate",
+            "certificate_hash": "31b9000686f3cbbfec9aab60c86fd246ae812276"
+          }
+        },
+        {
+          "client_id": "921441058212-vvvvp1vj6epe0tvlgi8pmtiqfqf9gl86.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmHIDpRWxHuNfBp_3jKLnjibGBiQ2etqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "921441058212-vvvvp1vj6epe0tvlgi8pmtiqfqf9gl86.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
