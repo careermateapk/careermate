@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
@@ -19,6 +20,9 @@ Future<void> main() async {
     runApp(SetupErrorApp(message: e.toString()));
     return;
   }
+
+  // Needed before reading PDFs with the document API (CV text extraction).
+  pdfrxFlutterInitialize();
 
   if (!kIsWeb) {
     await GoogleSignIn.instance.initialize(

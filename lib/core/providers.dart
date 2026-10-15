@@ -10,6 +10,14 @@ final prefsProvider = Provider<SharedPreferencesWithCache>(
   (ref) => throw UnimplementedError('prefsProvider must be overridden in main()'),
 );
 
+/// True while a sign-in is being checked (e.g. Google sign-in on the login
+/// page for an email with no account). The router waits instead of jumping.
+final authFlowBusyProvider = Provider<ValueNotifier<bool>>((ref) {
+  final n = ValueNotifier(false);
+  ref.onDispose(n.dispose);
+  return n;
+});
+
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
 final firestoreProvider = Provider<FirebaseFirestore>((ref) => FirebaseFirestore.instance);
 final storageProvider = Provider<FirebaseStorage>((ref) => FirebaseStorage.instance);

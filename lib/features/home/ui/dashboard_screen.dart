@@ -10,6 +10,8 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../auth/auth_repository.dart';
 import '../../cv/cv_repository.dart';
+import '../../profile/profile_repository.dart';
+import '../../profile/taxonomy.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,6 +21,7 @@ class DashboardScreen extends ConsumerWidget {
     final user = ref.watch(authStateProvider).value;
     final cv = ref.watch(currentCvProvider);
     final hasCv = cv.value != null;
+    final profile = ref.watch(profileProvider).value;
     final name = (user?.displayName?.trim().isNotEmpty ?? false) ? user!.displayName!.trim().split(' ').first : 'there';
     final needsVerify = user != null && !user.emailVerified && user.providerData.any((p) => p.providerId == 'password');
 
@@ -45,7 +48,9 @@ class DashboardScreen extends ConsumerWidget {
                       duration: AppMotion.medium,
                       child: cv.isLoading
                           ? const _LoadingCard(key: ValueKey('l'))
-                          : hasCv
+                          : profile != null && profile.atsScore != null
+                              ? _ProfileCard(key: const ValueKey('pr'), profile: profile)
+                              : hasCv
                               ? _CvReadyCard(key: const ValueKey('cv'), record: cv.value!)
                               : const _UploadPromptCard(key: ValueKey('up')),
                     ),
@@ -60,8 +65,13 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(children: [
                         const _Step(done: true, title: 'Create your account', subtitle: 'Done'),
                         _Step(done: hasCv, title: 'Upload your CV', subtitle: hasCv ? 'Done' : 'PDF or DOCX, up to 5 MB', onTap: () => context.go(Routes.cv)),
-                        const _Step(done: false, title: 'Review details from your CV', subtitle: 'Next build step', soon: true),
-                        const _Step(done: false, title: 'See jobs that match you', subtitle: 'Next build step', soon: true, last: true),
+                        _Step(
+                          done: profile != null,
+                          title: 'Confirm your details & job categories',
+                          subtitle: profile != null ? 'Done · tap to edit' : 'Takes a minute after uploading',
+                          onTap: hasCv ? () => context.push(Routes.cvReview) : null,
+                        ),
+                        const _Step(done: false, title: 'See jobs that match you', subtitle: 'Coming in the next build', soon: true, last: true),
                       ]),
                     ),
                   ),
@@ -285,6 +295,63 @@ class _Step extends StatelessWidget {
           if (onTap != null && !done) const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
         ]),
       ),
+    );
+  }
+}
+
+
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({super.key, required this.profile});
+  final CareerProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final main = profile.categoryId == null ? null : categoryById(profile.categoryId!);
+    final subs = profile.subCategoryIds.map(subCategoryById).whereType<SubCategory>().take(3).toList();
+    final score = profile.atsScore ?? 0;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [BoxShadow(color: AppColors.navy.withValues(alpha: 0.25), blurRadius: 36, offset: const Offset(0, 18))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          ScoreRing(
+            value: score,
+            size: 108,
+            color: score >= 75 ? const Color(0xFF4ADE80) : score >= 50 ? const Color(0xFF8FB0FF) : const Color(0xFFFBBF24),
+            track: Colors.white.withValues(alpha: 0.12),
+            label: 'out of 100',
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('CV READINESS (ESTIMATE)', style: TextStyle(color: Color(0xFFA9B6D6), fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .5)),
+              const SizedBox(height: 6),
+              Text(main?.name ?? 'Categories not set', style: AppTheme.display(context, size: 17, color: Colors.white)),
+              const SizedBox(height: 10),
+              FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: () => context.push(Routes.atsReport),
+                child: const Text('View report'),
+              ),
+            ]),
+          ),
+        ]),
+        if (subs.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final s in subs)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ),
+          ]),
+        ],
+      ]),
     );
   }
 }

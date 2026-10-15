@@ -26,6 +26,10 @@ dependencies:
   shared_preferences: ^2.5.6
   google_fonts: ^9.0.0
 
+  # Reading CV text on the phone
+  pdfrx: ^2.6.5
+  archive: ^4.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

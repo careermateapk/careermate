@@ -86,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         LoadingButton(label: 'Log in', loading: _busy, onPressed: _submit),
         const OrDivider(),
-        const GoogleButton(),
+        const GoogleButton(allowNewAccount: false),
         const SizedBox(height: 18),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('New here?'),

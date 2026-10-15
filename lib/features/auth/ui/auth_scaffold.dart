@@ -80,7 +80,10 @@ class AuthScaffold extends StatelessWidget {
 
 /// "Continue with Google" button.
 class GoogleButton extends ConsumerStatefulWidget {
-  const GoogleButton({super.key});
+  const GoogleButton({super.key, this.allowNewAccount = true});
+
+  /// False on the login page: new Google emails must register first.
+  final bool allowNewAccount;
 
   @override
   ConsumerState<GoogleButton> createState() => _GoogleButtonState();
@@ -92,7 +95,7 @@ class _GoogleButtonState extends ConsumerState<GoogleButton> {
   Future<void> _go() async {
     setState(() => _busy = true);
     try {
-      await ref.read(authRepositoryProvider).signInWithGoogle();
+      await ref.read(authRepositoryProvider).signInWithGoogle(allowNewAccount: widget.allowNewAccount);
     } on AuthCancelled catch (e) {
       if (mounted) {
         showMessage(context, e.detail.isEmpty ? 'Google sign-in was closed.' : 'Google sign-in was closed: ${e.detail}');

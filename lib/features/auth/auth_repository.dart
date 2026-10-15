@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show ValueNotifier, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -22,10 +22,11 @@ class AuthCancelled implements Exception {
 
 /// Email/password and Google sign-in only (both free on Firebase).
 class AuthRepository {
-  AuthRepository(this._auth, this._db);
+  AuthRepository(this._auth, this._db, this._busy);
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _db;
+  final ValueNotifier<bool> _busy;
 
   User? get currentUser => _auth.currentUser;
 
@@ -53,7 +54,18 @@ class AuthRepository {
     await _guard(() async => _auth.currentUser?.sendEmailVerification());
   }
 
-  Future<void> signInWithGoogle() async {
+  /// [allowNewAccount] is false on the login page: a Google email that has
+  /// no CareerMate account yet is not signed up there.
+  Future<void> signInWithGoogle({bool allowNewAccount = true}) async {
+    _busy.value = true;
+    try {
+      await _signInWithGoogle(allowNewAccount);
+    } finally {
+      _busy.value = false;
+    }
+  }
+
+  Future<void> _signInWithGoogle(bool allowNewAccount) async {
     await _guard(() async {
       UserCredential cred;
       if (kIsWeb) {
@@ -72,7 +84,16 @@ class AuthRepository {
         cred = await _auth.signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
       }
       final user = cred.user!;
-      if (cred.additionalUserInfo?.isNewUser ?? false) {
+      final isNew = cred.additionalUserInfo?.isNewUser ?? false;
+      if (isNew && !allowNewAccount) {
+        // Undo the account Firebase just created, then ask the user to sign up.
+        try {
+          await user.delete();
+        } catch (_) {}
+        await signOut();
+        throw AuthFailure('No account found for ${user.email ?? 'this Google account'}. Please create an account first.');
+      }
+      if (isNew) {
         await _saveProfile(user, provider: 'google', name: user.displayName ?? '');
       }
     });
@@ -125,5 +146,5 @@ class AuthRepository {
 }
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AuthRepository(ref.watch(firebaseAuthProvider), ref.watch(firestoreProvider)),
+  (ref) => AuthRepository(ref.watch(firebaseAuthProvider), ref.watch(firestoreProvider), ref.watch(authFlowBusyProvider)),
 );

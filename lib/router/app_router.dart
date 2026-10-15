@@ -12,6 +12,9 @@ import '../features/cv/ui/cv_upload_screen.dart';
 import '../features/home/ui/coming_soon_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
+import '../features/profile/ui/ats_report_screen.dart';
+import '../features/profile/ui/categories_screen.dart';
+import '../features/profile/ui/cv_review_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 
 class Routes {
@@ -26,6 +29,9 @@ class Routes {
   static const tracker = '/tracker';
   static const prep = '/prep';
   static const settings = '/settings';
+  static const cvReview = '/cv-review';
+  static const cvCategories = '/cv-categories';
+  static const atsReport = '/cv-report';
 
   static const _public = {onboarding, login, register, forgot};
 }
@@ -35,6 +41,15 @@ class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(Ref ref) {
     ref.listen(authStateProvider, (_, _) => notifyListeners());
     ref.listen(onboardingProvider, (_, _) => notifyListeners());
+    _busy = ref.read(authFlowBusyProvider)..addListener(notifyListeners);
+  }
+
+  late final ValueNotifier<bool> _busy;
+
+  @override
+  void dispose() {
+    _busy.removeListener(notifyListeners);
+    super.dispose();
   }
 }
 
@@ -49,6 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authStateProvider);
       final onboarded = ref.read(onboardingProvider);
       final loc = state.matchedLocation;
+      if (ref.read(authFlowBusyProvider).value) return null;
 
       if (auth.isLoading && !auth.hasValue) return loc == Routes.splash ? null : Routes.splash;
 
@@ -67,6 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.register, builder: (_, _) => const RegisterScreen()),
       GoRoute(path: Routes.forgot, builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsScreen()),
+      GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
+      GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),
+      GoRoute(path: Routes.atsReport, builder: (_, _) => const AtsReportScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [
