@@ -37,9 +37,6 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
         setState(() => _phase = _Phase.idle);
         return;
       }
-      if (file.size > AppConfig.maxCvBytes) {
-        throw CvUploadException('File is too large. Maximum size is 5 MB.');
-      }
       final bytes = await file.readAsBytes();
       setState(() {
         _fileName = file.name;

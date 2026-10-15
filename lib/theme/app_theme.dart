@@ -29,7 +29,7 @@ class AppTheme {
     );
 
     final base = ThemeData(useMaterial3: true, colorScheme: scheme, brightness: b);
-    final text = GoogleFonts.getTextTheme('Manrope', base.textTheme).apply(
+    final text = _manrope(base.textTheme).apply(
       bodyColor: isDark ? Colors.white : AppColors.navy,
       displayColor: isDark ? Colors.white : AppColors.navy,
     );
@@ -91,8 +91,30 @@ class AppTheme {
       dividerTheme: DividerThemeData(color: isDark ? AppColors.darkLine : AppColors.line, space: 1),
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
         TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
       }),
+    );
+  }
+
+  /// Applies Manrope to every text style while keeping each style's
+  /// size and weight (each weight is loaded on demand).
+  static TextTheme _manrope(TextTheme t) {
+    TextStyle? f(TextStyle? s) => s == null ? null : GoogleFonts.getFont('Manrope', textStyle: s);
+    return t.copyWith(
+      displayLarge: f(t.displayLarge),
+      displayMedium: f(t.displayMedium),
+      displaySmall: f(t.displaySmall),
+      headlineLarge: f(t.headlineLarge),
+      headlineMedium: f(t.headlineMedium),
+      headlineSmall: f(t.headlineSmall),
+      titleLarge: f(t.titleLarge),
+      titleMedium: f(t.titleMedium),
+      titleSmall: f(t.titleSmall),
+      bodyLarge: f(t.bodyLarge),
+      bodyMedium: f(t.bodyMedium),
+      bodySmall: f(t.bodySmall),
+      labelLarge: f(t.labelLarge),
+      labelMedium: f(t.labelMedium),
+      labelSmall: f(t.labelSmall),
     );
   }
 }
