@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// CV files: private to their owner, PDF/DOCX only, 5 MB max.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /users/{uid}/cv/{fileName} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size <= 5 * 1024 * 1024
+        && (request.resource.contentType == 'application/pdf'
+            || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

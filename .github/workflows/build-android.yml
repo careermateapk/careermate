@@ -1,0 +1,69 @@
+name: Build Android app
+
+# Runs on every change pushed to main, and can be started by hand
+# from the Actions tab ("Run workflow").
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to publish the APK as a release
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create the Android project files
+        run: |
+          flutter --version
+          flutter create . --platforms android --org in.careermate --project-name careermate
+          rm -f test/widget_test.dart
+          # App name shown under the icon
+          sed -i 's/android:label="careermate"/android:label="CareerMate"/' android/app/src/main/AndroidManifest.xml
+          # Fixed signing key so Google sign-in keeps working (SHA-1 never changes)
+          mkdir -p ~/.android
+          cp ci/debug.keystore ~/.android/debug.keystore
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Check the code
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Publish APK for download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: CareerMate build ${{ github.run_number }}
+          body: |
+            Install this APK on your Android phone to test.
+            Built from: ${{ github.event.head_commit.message || 'manual run' }}
+          prerelease: true
+          files: build/app/outputs/flutter-apk/app-release.apk

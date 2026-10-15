@@ -1,0 +1,35 @@
+name: careermate
+description: CareerMate — AI job search and career copilot (Android + Web).
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase (4.x family — stable, versions are compatible with each other)
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
+  firebase_storage: ^13.6.0
+  google_sign_in: ^7.2.0
+
+  # App structure
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.1.0
+
+  # Files, storage, fonts
+  file_picker: ^13.1.0
+  shared_preferences: ^2.5.6
+  google_fonts: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

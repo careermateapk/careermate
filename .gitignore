@@ -1,0 +1,16 @@
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+*.iml
+.DS_Store
+# Platform folders are generated during the GitHub build
+/android/
+/ios/
+/web/
+/linux/
+/macos/
+/windows/
+pubspec.lock
