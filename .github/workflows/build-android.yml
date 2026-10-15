@@ -53,7 +53,9 @@ jobs:
             web_id=$(python3 ci/make_firebase_options.py "$f" in.careermate.careermate)
             echo "GOOGLE_WEB_CLIENT_ID=$web_id" >> "$GITHUB_ENV"
             echo "Firebase connected using $f"
-            [ -z "$web_id" ] && echo "::warning::No Google web client ID found — enable Google sign-in in Firebase, then download google-services.json again."
+            if [ -z "$web_id" ]; then
+              echo "::warning::No Google web client ID found — enable Google sign-in in Firebase, then download google-services.json again."
+            fi
           else
             echo "::warning::google-services.json not uploaded yet — the app will show the Firebase setup screen."
           fi
