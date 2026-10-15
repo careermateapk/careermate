@@ -93,10 +93,14 @@ class _GoogleButtonState extends ConsumerState<GoogleButton> {
     setState(() => _busy = true);
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
-    } on AuthCancelled {
-      // User closed the picker.
+    } on AuthCancelled catch (e) {
+      if (mounted) {
+        showMessage(context, e.detail.isEmpty ? 'Google sign-in was closed.' : 'Google sign-in was closed: ${e.detail}');
+      }
     } on AuthFailure catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
+    } catch (e) {
+      if (mounted) showMessage(context, 'Google sign-in error: $e', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

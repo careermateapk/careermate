@@ -15,7 +15,10 @@ class AuthFailure implements Exception {
 }
 
 /// Thrown when the user closes the Google account picker. Not an error.
-class AuthCancelled implements Exception {}
+class AuthCancelled implements Exception {
+  AuthCancelled([this.detail = '']);
+  final String detail;
+}
 
 /// Email/password and Google sign-in only (both free on Firebase).
 class AuthRepository {
@@ -60,8 +63,9 @@ class AuthRepository {
         try {
           account = await GoogleSignIn.instance.authenticate();
         } on GoogleSignInException catch (e) {
-          if (e.code == GoogleSignInExceptionCode.canceled) throw AuthCancelled();
-          throw AuthFailure('Google sign-in failed. Check the SHA-1 setup (guide step 7). (${e.code.name})');
+          final detail = e.description ?? '';
+          if (e.code == GoogleSignInExceptionCode.canceled) throw AuthCancelled(detail);
+          throw AuthFailure('Google sign-in failed (${e.code.name})${detail.isEmpty ? '' : ': $detail'}');
         }
         final idToken = account.authentication.idToken;
         if (idToken == null) throw AuthFailure('Google did not return a sign-in token. Please try again.');
