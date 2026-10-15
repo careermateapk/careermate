@@ -46,16 +46,16 @@ jobs:
           cp ci/debug.keystore ~/.android/debug.keystore
 
       - name: Get packages
-        run: flutter pub get
+        run: ci/run_and_report.sh flutter pub get
 
       - name: Check the code
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: ci/run_and_report.sh flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Run tests
-        run: flutter test
+        run: ci/run_and_report.sh flutter test
 
       - name: Build APK
-        run: flutter build apk --release
+        run: ci/run_and_report.sh flutter build apk --release
 
       - name: Publish APK for download
         uses: softprops/action-gh-release@v2
