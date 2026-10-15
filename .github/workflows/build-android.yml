@@ -45,6 +45,19 @@ jobs:
           mkdir -p ~/.android
           cp ci/debug.keystore ~/.android/debug.keystore
 
+      - name: Connect Firebase
+        run: |
+          f=$(ls google-services*.json 2>/dev/null | head -1 || true)
+          if [ -n "$f" ]; then
+            cp "$f" android/app/google-services.json
+            web_id=$(python3 ci/make_firebase_options.py "$f" in.careermate.careermate)
+            echo "GOOGLE_WEB_CLIENT_ID=$web_id" >> "$GITHUB_ENV"
+            echo "Firebase connected using $f"
+            [ -z "$web_id" ] && echo "::warning::No Google web client ID found — enable Google sign-in in Firebase, then download google-services.json again."
+          else
+            echo "::warning::google-services.json not uploaded yet — the app will show the Firebase setup screen."
+          fi
+
       - name: Get packages
         run: ci/run_and_report.sh flutter pub get
 
@@ -55,7 +68,7 @@ jobs:
         run: ci/run_and_report.sh flutter test
 
       - name: Build APK
-        run: ci/run_and_report.sh flutter build apk --release
+        run: ci/run_and_report.sh flutter build apk --release --dart-define=GOOGLE_WEB_CLIENT_ID=${{ env.GOOGLE_WEB_CLIENT_ID }} --dart-define=UPLOAD_CV_TO_CLOUD=false
 
       - name: Publish APK for download
         uses: softprops/action-gh-release@v2
