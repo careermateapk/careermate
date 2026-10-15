@@ -42,8 +42,7 @@ jobs:
           # App name shown under the icon
           sed -i 's/android:label="careermate"/android:label="CareerMate"/' android/app/src/main/AndroidManifest.xml
           # Fixed signing key so Google sign-in keeps working (SHA-1 never changes)
-          mkdir -p ~/.android
-          cp ci/debug.keystore ~/.android/debug.keystore
+          python3 ci/patch_signing.py
 
       - name: Connect Firebase
         run: |
@@ -71,6 +70,17 @@ jobs:
 
       - name: Build APK
         run: ci/run_and_report.sh flutter build apk --release --dart-define=GOOGLE_WEB_CLIENT_ID=${{ env.GOOGLE_WEB_CLIENT_ID }} --dart-define=UPLOAD_CV_TO_CLOUD=false
+
+      - name: Check APK signing key
+        run: |
+          expected="31:B9:00:06:86:F3:CB:BF:EC:9A:AB:60:C8:6F:D2:46:AE:81:22:76"
+          apksigner=$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)
+          actual=$($apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk | grep "SHA-1" | head -1 | awk '{print $NF}' | sed 's/../&:/g; s/:$//' | tr a-z A-Z)
+          echo "APK SHA-1: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::APK is signed with $actual, expected $expected"
+            exit 1
+          fi
 
       - name: Publish APK for download
         uses: softprops/action-gh-release@v2
