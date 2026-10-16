@@ -77,13 +77,22 @@ jobs:
         run: ci/run_and_report.sh flutter test
 
       - name: Build APK
-        run: ci/run_and_report.sh flutter build apk --release --dart-define=GOOGLE_WEB_CLIENT_ID=${{ env.GOOGLE_WEB_CLIENT_ID }} --dart-define=UPLOAD_CV_TO_CLOUD=false
+        run: |
+          ci/run_and_report.sh flutter build apk --release --dart-define=GOOGLE_WEB_CLIENT_ID=${{ env.GOOGLE_WEB_CLIENT_ID }} --dart-define=UPLOAD_CV_TO_CLOUD=false
+          mkdir -p dist && cp build/app/outputs/flutter-apk/app-release.apk dist/CareerMate-all-phones.apk
+
+      - name: Build smaller APKs (one per phone type)
+        run: |
+          ci/run_and_report.sh flutter build apk --release --split-per-abi --dart-define=GOOGLE_WEB_CLIENT_ID=${{ env.GOOGLE_WEB_CLIENT_ID }} --dart-define=UPLOAD_CV_TO_CLOUD=false
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/CareerMate-most-phones.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/CareerMate-older-phones.apk
+          ls -la dist
 
       - name: Check APK signing key
         run: |
           expected="31:B9:00:06:86:F3:CB:BF:EC:9A:AB:60:C8:6F:D2:46:AE:81:22:76"
           apksigner=$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)
-          actual=$($apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk | grep "SHA-1" | head -1 | awk '{print $NF}' | sed 's/../&:/g; s/:$//' | tr a-z A-Z)
+          actual=$($apksigner verify --print-certs dist/CareerMate-most-phones.apk | grep "SHA-1" | head -1 | awk '{print $NF}' | sed 's/../&:/g; s/:$//' | tr a-z A-Z)
           echo "APK SHA-1: $actual"
           if [ "$actual" != "$expected" ]; then
             echo "::error::APK is signed with $actual, expected $expected"
@@ -96,7 +105,11 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: CareerMate build ${{ github.run_number }}
           body: |
-            Install this APK on your Android phone to test.
+            Download CareerMate-most-phones.apk (smallest, works on most phones made after 2017).
+            If it does not install, use CareerMate-all-phones.apk.
             Built from: ${{ github.event.head_commit.message || 'manual run' }}
           prerelease: true
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: |
+            dist/CareerMate-most-phones.apk
+            dist/CareerMate-older-phones.apk
+            dist/CareerMate-all-phones.apk
