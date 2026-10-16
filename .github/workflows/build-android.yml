@@ -42,7 +42,7 @@ jobs:
       - name: Create the Android project files
         run: |
           flutter --version
-          flutter create . --platforms android --org in.careermate --project-name careermate
+          ci/run_and_report.sh flutter create . --platforms android --org in.careermate --project-name careermate
           rm -f test/widget_test.dart
           # App name shown under the icon
           sed -i 's/android:label="careermate"/android:label="CareerMate"/' android/app/src/main/AndroidManifest.xml

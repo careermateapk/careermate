@@ -10,6 +10,7 @@ import '../../../widgets/common.dart';
 import '../../outreach/ui/email_compose_screen.dart';
 import '../../recruiter/posted_job.dart';
 import '../../community/job_post.dart';
+import '../../tracker/tracker.dart';
 import '../job_models.dart';
 import 'about_job.dart';
 import 'other_sites.dart';
@@ -45,6 +46,7 @@ class JobDetailScreen extends StatelessWidget {
           expandedHeight: 210,
           backgroundColor: AppColors.navy,
           foregroundColor: Colors.white,
+          actions: [_SaveButton(job: j)],
           flexibleSpace: FlexibleSpaceBar(
             background: SafeArea(
               child: Padding(
@@ -163,7 +165,22 @@ class JobDetailScreen extends StatelessWidget {
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                    onPressed: j.url.isEmpty ? null : () => _open(context, j.url),
+                    onPressed: j.url.isEmpty
+                        ? null
+                        : () async {
+                            await _open(context, j.url);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: const Text('Applied there? Add it to your tracker.'),
+                              duration: const Duration(seconds: 8),
+                              action: SnackBarAction(
+                                label: 'Mark applied',
+                                onPressed: () => ProviderScope.containerOf(context, listen: false)
+                                    .read(trackerRepositoryProvider)
+                                    ?.save(TrackedJob.fromJob(j, stage: Stage.applied)),
+                              ),
+                            ));
+                          },
                     icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -208,6 +225,45 @@ class _Line extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13.5, height: 1.4))),
         ]),
+      );
+}
+
+class _SaveButton extends ConsumerStatefulWidget {
+  const _SaveButton({required this.job});
+  final JobItem job;
+  @override
+  ConsumerState<_SaveButton> createState() => _SaveButtonState();
+}
+
+class _SaveButtonState extends ConsumerState<_SaveButton> {
+  bool? _saved;
+
+  String get _id => widget.job.isCareerMate ? widget.job.postedJobId! : widget.job.id;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(trackerRepositoryProvider)?.has(_id).then((v) {
+      if (mounted) setState(() => _saved = v);
+    }).catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: _saved == true ? 'Saved in tracker' : 'Save to tracker',
+        icon: Icon(_saved == true ? Icons.bookmark_rounded : Icons.bookmark_border_rounded),
+        onPressed: () async {
+          final repo = ref.read(trackerRepositoryProvider);
+          if (repo == null) return;
+          if (_saved == true) {
+            await repo.delete(_id);
+          } else {
+            await repo.save(TrackedJob.fromJob(widget.job));
+          }
+          if (!mounted) return;
+          setState(() => _saved = !(_saved ?? false));
+          showMessage(context, _saved! ? 'Saved to your tracker.' : 'Removed from tracker.');
+        },
       );
 }
 

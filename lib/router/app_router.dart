@@ -9,13 +9,14 @@ import '../features/auth/ui/onboarding_screen.dart';
 import '../features/auth/ui/register_screen.dart';
 import '../features/auth/ui/splash_screen.dart';
 import '../features/cv/ui/cv_upload_screen.dart';
-import '../features/home/ui/coming_soon_screen.dart';
 import '../features/jobs/job_models.dart';
 import '../features/jobs/ui/job_detail_screen.dart';
 import '../features/jobs/ui/jobs_screen.dart';
 import '../features/jobs/ui/sources_screen.dart';
 import '../features/community/ui/share_job_screen.dart';
 import '../features/resume/ui/resume_screens.dart';
+import '../features/tracker/ui/tracker_screen.dart';
+import '../features/prep/ui/prep_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
@@ -156,21 +157,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: Routes.tracker,
-              builder: (_, _) => const ComingSoonScreen(
-                title: 'Applications',
-                icon: Icons.view_kanban_outlined,
-                message: 'Your application tracker is coming in Phase 1.',
-              ),
+              builder: (_, _) => const TrackerScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: Routes.prep,
-              builder: (_, _) => const ComingSoonScreen(
-                title: 'Interview prep',
-                icon: Icons.chat_bubble_outline_rounded,
-                message: 'Mock interviews arrive in Phase 2.',
-              ),
+              builder: (_, _) => const InterviewPrepScreen(),
             ),
           ]),
         ],
