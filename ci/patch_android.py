@@ -40,8 +40,13 @@ print("Android notification settings added")
 # Some older plugins compile Kotlin for JVM 17 but Java for 11; don't fail the build for that.
 gp = pathlib.Path("android/gradle.properties")
 props = gp.read_text() if gp.exists() else ""
+import re as _re
+# Keep Gradle's memory below what the build machine has (big apps were being killed mid-build).
+props = _re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", props)
+props = props.rstrip("\n") + "\norg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g\nkotlin.daemon.jvmargs=-Xmx2g\n"
 if "kotlin.jvm.target.validation.mode" not in props:
-    gp.write_text(props.rstrip("\n") + "\nkotlin.jvm.target.validation.mode=warning\n")
+    props += "kotlin.jvm.target.validation.mode=warning\n"
+gp.write_text(props)
 
 # Release shrinking (R8): ML Kit's optional language packs are not included; don't fail on their missing classes.
 pathlib.Path("android/app/proguard-rules.pro").write_text("""
