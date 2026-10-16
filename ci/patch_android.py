@@ -42,3 +42,13 @@ gp = pathlib.Path("android/gradle.properties")
 props = gp.read_text() if gp.exists() else ""
 if "kotlin.jvm.target.validation.mode" not in props:
     gp.write_text(props.rstrip("\n") + "\nkotlin.jvm.target.validation.mode=warning\n")
+
+# Release shrinking (R8): ML Kit's optional language packs are not included; don't fail on their missing classes.
+pathlib.Path("android/app/proguard-rules.pro").write_text("""
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.android.play.core.**
+""")
