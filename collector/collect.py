@@ -444,8 +444,8 @@ def main():
     summary = (f"Collected {len(jobs)} jobs → {len(unique)} after removing duplicates → {filed} filed into "
                f"categories ({unfiled} did not fit any category).")
     notice(summary)
-    for src, st in sorted(stats.items()):
-        notice(f"{src}: {st['jobs']} jobs from {st['ok']} of {st['boards']} boards ({st['errors']} failed)")
+    notice("By source: " + "; ".join(f"{src} {st['jobs']} jobs ({st['ok']}/{st['boards']} boards ok)"
+                                      for src, st in sorted(stats.items())))
     top = sorted(((len(v), k) for k, v in by_sub.items() if v), reverse=True)[:12]
     notice("Busiest sub-categories: " + ", ".join(f"{k}={n}" for n, k in top))
     notice("Boards with jobs: " + ", ".join(sorted(working))[:3500])
@@ -481,7 +481,7 @@ def main():
         "updatedAt": checked, "total": len(unique), "filed": filed,
         "sources": {k: v for k, v in stats.items()},
     })
-    notice(f"Wrote {written} category documents to Firebase.")
+    print(f"::warning title=Firebase::Wrote {written} category documents ({filed} jobs) to Firebase.", flush=True)
 
 
 if __name__ == "__main__":
