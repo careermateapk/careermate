@@ -44,6 +44,9 @@ dependencies:
   # Reads text that is inside pictures in a CV (free, on the phone)
   google_mlkit_text_recognition: ^0.15.0
 
+  # "Share → CareerMate" from LinkedIn/WhatsApp
+  receive_sharing_intent: ^1.9.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

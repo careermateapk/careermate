@@ -8,9 +8,10 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../profile/profile_repository.dart';
 import '../job_models.dart';
+import '../city_filter.dart';
 import 'other_sites.dart';
 
-enum _Filter { all, remote, myCity, fresher, official }
+enum _Filter { all, remote, fresher, official, shared }
 
 class JobsScreen extends ConsumerStatefulWidget {
   const JobsScreen({super.key});
@@ -23,6 +24,10 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   final _search = TextEditingController();
   _Filter _filter = _Filter.all;
   String _query = '';
+
+  /// null = not chosen yet (starts with the CV city), '' = all of India.
+  String? _city;
+  bool _nearby = true;
 
   @override
   void dispose() {
@@ -37,6 +42,11 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Find jobs'), actions: [
+        IconButton(
+          tooltip: 'Share a job post you saw',
+          icon: const Icon(Icons.add_link_rounded),
+          onPressed: () => context.push(Routes.shareJob),
+        ),
         IconButton(
           tooltip: 'Where jobs come from',
           icon: const Icon(Icons.hub_outlined),
@@ -68,17 +78,19 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _list(BuildContext context, CareerProfile profile, JobsData data) {
-    final city = profile.location.toLowerCase().trim();
+    final cvCity = profile.location.split(',').first.trim();
+    final city = _city ?? cvCity;
     final q = _query.toLowerCase();
     final matches = data.jobs.map((j) => JobMatch.of(j, profile)).where((m) {
       final j = m.job;
       if (q.isNotEmpty && !('${j.title} ${j.company} ${j.location}'.toLowerCase().contains(q))) return false;
+      if (_filter != _Filter.remote && city.isNotEmpty && !jobInCity(j, city, nearby: _nearby)) return false;
       return switch (_filter) {
         _Filter.all => true,
         _Filter.remote => j.remote,
-        _Filter.myCity => city.isNotEmpty && j.location.toLowerCase().contains(city),
         _Filter.fresher => j.looksFresherFriendly,
         _Filter.official => j.official,
+        _Filter.shared => j.isCommunity,
       };
     }).toList()
       ..sort((a, b) {
@@ -115,6 +127,25 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ActionChip(
+                avatar: Icon(Icons.place_rounded, size: 18, color: city.isEmpty ? null : Colors.white),
+                backgroundColor: city.isEmpty ? null : AppColors.blue,
+                side: city.isEmpty ? null : const BorderSide(color: AppColors.blue),
+                label: Text('${city.isEmpty ? 'All cities' : city} ▾',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: city.isEmpty ? null : Colors.white)),
+                onPressed: () async {
+                  final r = await pickCity(context, current: city, cvCity: cvCity, nearby: _nearby, jobs: data.jobs);
+                  if (r != null) {
+                    setState(() {
+                      _city = r.$1;
+                      _nearby = r.$2;
+                    });
+                  }
+                },
+              ),
+            ),
             for (final f in _Filter.values)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -122,9 +153,9 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   label: Text(switch (f) {
                     _Filter.all => 'All',
                     _Filter.remote => 'Remote',
-                    _Filter.myCity => profile.location.isEmpty ? 'My city' : profile.location,
                     _Filter.fresher => 'Fresher / intern',
                     _Filter.official => 'Company sites only',
+                    _Filter.shared => 'Shared by people',
                   }),
                   selected: _filter == f,
                   onSelected: (_) => setState(() => _filter = f),
@@ -149,7 +180,11 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
             body: 'We gather new jobs from company career sites every few hours. Pull down to refresh later.',
           )
         else if (matches.isEmpty)
-          const _Message(icon: Icons.filter_alt_off_rounded, title: 'No jobs for this filter', body: 'Try another filter or clear your search.')
+          _Message(
+            icon: Icons.filter_alt_off_rounded,
+            title: city.isEmpty ? 'No jobs for this filter' : 'No jobs in $city for this filter',
+            body: city.isEmpty ? 'Try another filter or clear your search.' : 'Try “All cities”, turn on nearby cities, or pick another city.',
+          )
         else
           for (var i = 0; i < matches.length; i++) ...[
             FadeSlideIn(index: i < 8 ? i : 8, child: _JobCard(match: matches[i])),
@@ -219,7 +254,10 @@ class _JobCard extends StatelessWidget {
           if (j.scamFlags.isNotEmpty) const StatusChip('Suspicious: asks for money', tone: ChipTone.risk),
           if (j.isCareerMate)
             const StatusChip('Posted on CareerMate', tone: ChipTone.info)
-          else
+          else if (j.isCommunity) ...[
+            StatusChip(j.sourceName, tone: ChipTone.info),
+            if (j.checksTotal > 0) StatusChip('Checks passed ${j.checksPassed}/${j.checksTotal}', tone: ChipTone.positive),
+          ] else
             StatusChip(j.official ? 'Company careers page' : 'via ${j.sourceName}', tone: j.official ? ChipTone.positive : ChipTone.info),
           if (j.remote) const StatusChip('Remote'),
           if (j.looksFresherFriendly) const StatusChip('Fresher-friendly'),

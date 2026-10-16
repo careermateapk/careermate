@@ -4,6 +4,7 @@ import '../../core/providers.dart';
 import '../profile/cv_parser.dart';
 import '../profile/profile_repository.dart';
 import '../recruiter/posted_job.dart';
+import '../community/job_post.dart';
 
 /// One job from the collector (jobs_index/{subCategoryId}.jobs[]).
 class JobItem {
@@ -27,11 +28,20 @@ class JobItem {
     required this.skills,
     required this.subIds,
     required this.scamFlags,
+    this.description = '',
     this.postedJobId,
     this.contactEmail = '',
+    this.communityId,
+    this.checksPassed = 0,
+    this.checksTotal = 0,
+    this.reports = 0,
   });
 
   final String id;
+
+  /// Longer description when the source gives one (falls back to [snippet]).
+  final String description;
+  String get fullText => description.length > snippet.length ? description : snippet;
   final String title;
   final String company;
   final String location;
@@ -62,6 +72,13 @@ class JobItem {
   bool get isAdzuna => source == 'adzuna';
   bool get isCareerMate => postedJobId != null;
 
+  /// Shared into CareerMate by a user from LinkedIn/WhatsApp, after checks.
+  final String? communityId;
+  final int checksPassed;
+  final int checksTotal;
+  final int reports;
+  bool get isCommunity => communityId != null;
+
   int? get ageDays => postedAt == null ? null : DateTime.now().difference(postedAt!).inDays;
 
   bool get looksFresherFriendly {
@@ -88,6 +105,7 @@ class JobItem {
         salaryMax: m['salaryMax'] as num?,
         employmentType: m['employmentType'] as String?,
         snippet: m['snippet'] as String? ?? '',
+        description: m['description'] as String? ?? '',
         skills: List<String>.from(m['skills'] as List? ?? const []),
         subIds: List<String>.from(m['subIds'] as List? ?? const []),
         scamFlags: List<String>.from(m['scamFlags'] as List? ?? const []),
@@ -191,6 +209,12 @@ final jobsProvider = FutureProvider.autoDispose<JobsData>((ref) async {
       byId[j.id] = j;
     }
   }
+  // Jobs shared by users (LinkedIn/WhatsApp posts) that passed the checks.
+  try {
+    for (final c in await ref.watch(communityRepositoryProvider).jobsFor(profile.subCategoryIds)) {
+      byId[c.id] = c;
+    }
+  } catch (_) {}
   // Jobs posted by recruiters on CareerMate come first in the list.
   try {
     final posted = await ref.watch(recruiterRepositoryProvider).liveJobsFor(profile.subCategoryIds);

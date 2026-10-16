@@ -23,7 +23,16 @@ else:
 
 m = pathlib.Path("android/app/src/main/AndroidManifest.xml")
 x = m.read_text()
+# "Share → CareerMate" from LinkedIn/WhatsApp: accept shared text, reuse the running app
+x = x.replace('android:launchMode="singleTop"', 'android:launchMode="singleTask"', 1)
+if "android.intent.action.SEND" not in x:
+    x = x.replace("</activity>", """    <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+        </activity>""", 1)
 if "POST_NOTIFICATIONS" not in x:
     x = x.replace("<application", '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application', 1)
-    m.write_text(x)
+m.write_text(x)
 print("Android notification settings added")

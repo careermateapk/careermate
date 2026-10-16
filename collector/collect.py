@@ -597,11 +597,16 @@ def main():
     light_keys = ["id", "title", "company", "location", "remote", "url", "source", "sourceName", "official",
                   "postedAt", "dateKind", "salaryMin", "salaryMax", "employmentType", "snippet", "skills", "subIds",
                   "catId", "scamFlags"]
+    # Longer description for the job page (keeps each category document well under Firestore's 1 MB limit).
+    def light_job(j):
+        d = {k: j.get(k) for k in light_keys}
+        d["description"] = (j.get("description") or "")[:1500]
+        return d
     checked = NOW.isoformat()
     written = 0
     for sid, items in by_sub.items():
         items.sort(key=lambda j: -(parse_date(j["postedAt"]) or NOW - dt.timedelta(days=60)).timestamp())
-        light = [dict({k: j.get(k) for k in light_keys}, lastChecked=checked) for j in items[:MAX_JOBS_PER_SUB]]
+        light = [dict(light_job(j), lastChecked=checked) for j in items[:MAX_JOBS_PER_SUB]]
         db.set(f"jobs_index/{sid}", {"updatedAt": checked, "count": len(items), "jobs": light})
         written += 1
     db.set("meta/jobs", {

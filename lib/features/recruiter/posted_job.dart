@@ -116,6 +116,7 @@ class PostedJob {
         salaryMax: salaryMaxLakh == null ? null : salaryMaxLakh! * 100000,
         employmentType: '$workModeLabel · $experienceLabel',
         snippet: description.length > 400 ? description.substring(0, 400) : description,
+        description: description,
         skills: skills,
         subIds: subIds,
         scamFlags: const [],

@@ -76,6 +76,8 @@ class CvParser {
     'dhanbad', 'siliguri', 'jodhpur', 'udaipur', 'kota', 'goa', 'panaji', 'srinagar', 'jammu', 'shimla', 'remote',
   ];
 
+  static const degrees = _degrees;
+
   static const _degrees = [
     'ph.d', 'phd', 'm.tech', 'mtech', 'b.tech', 'btech', 'b.e.', 'm.e.', 'mba', 'pgdm', 'mca', 'bca', 'm.sc', 'msc',
     'b.sc', 'bsc', 'm.com', 'mcom', 'b.com', 'bcom', 'bba', 'b.ed', 'm.ed', 'llb', 'll.b', 'llm', 'mbbs', 'b.pharm',

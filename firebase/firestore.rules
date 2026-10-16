@@ -58,6 +58,22 @@ service cloud.firestore {
       }
     }
 
+    // Job posts shared by users (from LinkedIn/WhatsApp) after the in-app checks
+    match /community_jobs/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.sharedBy == request.auth.uid
+        && request.resource.data.reports == 0
+        && request.resource.data.reportedBy.size() == 0;
+      // Anyone signed in can report once; nothing else can be changed by others
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reports', 'reportedBy'])
+        && !(request.auth.uid in resource.data.reportedBy)
+        && request.resource.data.reportedBy == resource.data.reportedBy.concat([request.auth.uid])
+        && request.resource.data.reports == resource.data.reports + 1;
+      allow delete: if signedIn() && resource.data.sharedBy == request.auth.uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

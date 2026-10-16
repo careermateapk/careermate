@@ -8,9 +8,10 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../outreach/ui/email_compose_screen.dart';
-import '../../profile/cv_parser.dart';
 import '../../recruiter/posted_job.dart';
+import '../../community/job_post.dart';
 import '../job_models.dart';
+import 'about_job.dart';
 import 'other_sites.dart';
 import 'jobs_screen.dart' show postedText;
 
@@ -101,39 +102,10 @@ class JobDetailScreen extends StatelessWidget {
                       ]),
                     ),
                   ),
-                  if (j.skills.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    FadeSlideIn(
-                      index: 1,
-                      child: AppCard(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Skills this job mentions', style: AppTheme.display(context, size: 15)),
-                          const SizedBox(height: 10),
-                          Wrap(spacing: 6, runSpacing: 6, children: [
-                            for (final s in match.matchedSkills) StatusChip(CvParser.prettySkill(s), tone: ChipTone.positive),
-                            for (final s in match.missingSkills) StatusChip('${CvParser.prettySkill(s)} · not shown in CV', tone: ChipTone.warning),
-                          ]),
-                        ]),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 12),
                   FadeSlideIn(index: 2, child: _Authenticity(job: j)),
-                  if (j.snippet.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    FadeSlideIn(
-                      index: 3,
-                      child: AppCard(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('About the job', style: AppTheme.display(context, size: 15)),
-                          const SizedBox(height: 8),
-                          Text('${j.snippet}${j.snippet.length >= 400 ? '…' : ''}', style: const TextStyle(color: AppColors.textBody, height: 1.5)),
-                          const SizedBox(height: 6),
-                          const Text('Read the full description on the job page.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        ]),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 12),
+                  FadeSlideIn(index: 3, child: AboutJobCard(match: match)),
                   const SizedBox(height: 12),
                   FadeSlideIn(
                     index: 4,
@@ -191,11 +163,11 @@ class JobDetailScreen extends StatelessWidget {
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                    onPressed: () => _open(context, j.url),
+                    onPressed: j.url.isEmpty ? null : () => _open(context, j.url),
                     icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(j.official ? 'Apply on site' : 'View on ${j.sourceName}', maxLines: 1, softWrap: false),
+                      child: Text(j.isCommunity ? (j.url.isEmpty ? 'No link in post' : 'Open original post') : j.official ? 'Apply on site' : 'View on ${j.sourceName}', maxLines: 1, softWrap: false),
                     ),
                   ),
                 ),
@@ -239,6 +211,49 @@ class _Line extends StatelessWidget {
       );
 }
 
+class _ReportButton extends ConsumerStatefulWidget {
+  const _ReportButton({required this.job});
+  final JobItem job;
+  @override
+  ConsumerState<_ReportButton> createState() => _ReportButtonState();
+}
+
+class _ReportButtonState extends ConsumerState<_ReportButton> {
+  bool _done = false;
+  Future<void> _report() async {
+    final uid = ref.read(authStateProvider).value?.uid;
+    if (uid == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Report as fake?'),
+        content: const Text('Report only if the job asks for money, the company doesn’t exist, or it looks like a scam.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Report')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(communityRepositoryProvider).report(widget.job.communityId!, uid);
+      if (mounted) {
+        setState(() => _done = true);
+        showMessage(context, 'Thanks — reported.');
+      }
+    } catch (_) {
+      if (mounted) showMessage(context, 'You have already reported this job, or you are offline.', error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+        onPressed: _done ? null : _report,
+        icon: const Icon(Icons.flag_rounded, size: 18, color: AppColors.red),
+        label: Text(_done ? 'Reported' : 'Report as fake', style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
+      );
+}
+
 class _Authenticity extends StatelessWidget {
   const _Authenticity({required this.job});
   final JobItem job;
@@ -247,6 +262,9 @@ class _Authenticity extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, tone, icon, color) = job.scamFlags.isNotEmpty
         ? ('Suspicious indicators found', ChipTone.risk, Icons.gpp_bad_outlined, AppColors.red)
+        : job.isCommunity
+        ? ('Checks passed ${job.checksPassed}/${job.checksTotal}', job.checksPassed >= job.checksTotal - 1 ? ChipTone.positive : ChipTone.warning,
+            Icons.groups_rounded, AppColors.blue)
         : job.isCareerMate
             ? ('Verified recruiter', ChipTone.positive, Icons.verified_user_outlined, AppColors.green)
             : job.official
@@ -270,7 +288,12 @@ class _Authenticity extends StatelessWidget {
         const SizedBox(height: 10),
         StatusChip(label, tone: tone),
         const SizedBox(height: 10),
-        if (job.isCareerMate)
+        if (job.isCommunity) ...[
+          const _Line(icon: Icons.info_outline_rounded, color: AppColors.blue,
+              text: 'Shared by a CareerMate user from a public post. We checked the email, website and warning signs, but please confirm with the company.'),
+          _Line(icon: Icons.flag_outlined, color: AppColors.textMuted, text: '${job.reports} report${job.reports == 1 ? '' : 's'} so far. Jobs with 3 reports are hidden.'),
+          Align(alignment: Alignment.centerLeft, child: _ReportButton(job: job)),
+        ] else if (job.isCareerMate)
           const _Line(icon: Icons.check_rounded, color: AppColors.green, text: 'Posted on CareerMate by a recruiter whose company email is verified.')
         else if (job.official)
           const _Line(icon: Icons.check_rounded, color: AppColors.green, text: "Published on the company's own hiring page.")
