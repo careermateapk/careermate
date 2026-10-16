@@ -41,6 +41,41 @@ INDIA_PLACES = [
     "mysore", "mangaluru", "mangalore", "thane", "navi mumbai", "dehradun", "goa", "raipur", "kanpur", "varanasi",
 ]
 REMOTE_OK = ["india", "apac", "asia", "anywhere", "worldwide", "global", "emea & apac"]
+TITLE_FALLBACK = [
+    (r"\b(nurse|nursing)\b", "health_nursing"),
+    (r"\b(pharmac|drug safety|pharmacovigilance)", "health_pharma"),
+    (r"\b(doctor|physician|medical officer)\b", "health_doctor"),
+    (r"\b(teacher|faculty|lecturer|professor|tutor)\b", "edu_school"),
+    (r"\b(product manager|product owner|product management)\b", "pm_product"),
+    (r"\b(project manager|program manager|programme manager|scrum master|pmo|delivery manager)\b", "pm_project"),
+    (r"\b(security|cyber|threat|soc\b|iam\b|identity)", "it_security"),
+    (r"\b(test|tester|qa\b|quality assurance|sdet)", "it_qa"),
+    (r"\b(devops|sre\b|site reliability|cloud|infrastructure|platform engineer|kubernetes|network engineer)", "it_devops"),
+    (r"\b(data|analytics|analyst|machine learning|ml\b|ai\b|scientist|bi\b|insights)", "it_data"),
+    (r"\b(android|ios|mobile)\b", "it_mobile"),
+    (r"\b(frontend|front end|front-end|ui engineer|web developer)\b", "it_frontend"),
+    (r"\b(mechanical|manufacturing|production|plant|maintenance)\b", "eng_mech"),
+    (r"\b(electrical|electronics|embedded|hardware|vlsi|firmware|asic)\b", "eng_electrical"),
+    (r"\b(civil|construction|site engineer|structural)\b", "eng_civil"),
+    (r"\b(software|developer|programmer|sde\b|full ?stack|backend|back end|engineer)", "it_backend"),
+    (r"\b(designer|ux\b|ui\b|design)\b", "design_uiux"),
+    (r"\b(recruit|talent acquisition|sourcer)", "hr_recruit"),
+    (r"\b(hr\b|human resources|people partner|payroll|hrbp)", "hr_generalist"),
+    (r"\b(account(ant|ing)|accounts|bookkeep|reconciliation)", "fin_accounts"),
+    (r"\b(audit|tax|taxation)\b", "fin_ca"),
+    (r"\b(finance|financial|fp&a|treasury|credit)\b", "fin_analysis"),
+    (r"\b(marketing|seo\b|growth|campaign|brand)\b", "mkt_digital"),
+    (r"\b(content|writer|copywriter|editor)\b", "mkt_content"),
+    (r"\b(business development|partnership|bdm\b|bde\b)", "sales_bd"),
+    (r"\b(sales|account executive|account manager|customer success)\b", "sales_bd"),
+    (r"\b(support|service desk|helpdesk|technical support)\b", "it_support"),
+    (r"\b(customer|process associate|voice|chat)\b", "cs_nonvoice"),
+    (r"\b(supply chain|procurement|purchase|sourcing|buyer)\b", "ops_supply"),
+    (r"\b(logistics|warehouse|dispatch|fleet)\b", "ops_logistics"),
+    (r"\b(quality|six sigma)\b", "eng_quality"),
+    (r"\b(legal|counsel|lawyer|compliance|paralegal)\b", "legal_law"),
+    (r"\b(admin|administrative|office assistant|receptionist|executive assistant)\b", "hr_admin"),
+]
 SCAM_WORDS = ["registration fee", "security deposit", "pay to apply", "processing fee", "refundable deposit",
               "training fee", "send money", "upi payment"]
 
@@ -150,6 +185,13 @@ def classify(job, subs):
         score = 3 * len(t_hits) + len(k_hits)
         if t_hits or len(k_hits) >= 3:
             scored.append((score, s))
+    if not scored:
+        # Fallback: broad words in the job title (most big-company titles are generic).
+        by_id = {s["id"]: s for s in subs}
+        for pattern, sid in TITLE_FALLBACK:
+            if sid in by_id and re.search(pattern, title):
+                scored.append((1, by_id[sid]))
+                break
     scored.sort(key=lambda x: -x[0])
     job["subIds"] = [s["id"] for _, s in scored[:3]]
     job["catId"] = scored[0][1]["cat"] if scored else None
