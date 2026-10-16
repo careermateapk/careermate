@@ -36,3 +36,9 @@ if "POST_NOTIFICATIONS" not in x:
     x = x.replace("<application", '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application', 1)
 m.write_text(x)
 print("Android notification settings added")
+
+# Some older plugins compile Kotlin for JVM 17 but Java for 11; don't fail the build for that.
+gp = pathlib.Path("android/gradle.properties")
+props = gp.read_text() if gp.exists() else ""
+if "kotlin.jvm.target.validation.mode" not in props:
+    gp.write_text(props.rstrip("\n") + "\nkotlin.jvm.target.validation.mode=warning\n")
