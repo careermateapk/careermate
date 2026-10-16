@@ -59,3 +59,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# pdf → image 4.11 needs a newer archive than other packages allow; this image version works with it.
+dependency_overrides:
+  image: 4.5.4
