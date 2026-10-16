@@ -314,6 +314,106 @@ def workable(account):
     return out
 
 
+def recruitee(company):
+    data = get_json(f"https://{company}.recruitee.com/api/offers/")
+    out = []
+    for j in data.get("offers", []):
+        location = ", ".join(x for x in [j.get("city"), j.get("state_name") or j.get("state"), j.get("country")] if x) \
+            or j.get("location", "")
+        out.append(make_job(
+            "recruitee", "Company careers page (Recruitee)", True, j.get("company_name") or company.title(),
+            j.get("title"), location, j.get("careers_url") or j.get("careers_apply_url"),
+            j.get("published_at") or j.get("created_at"),
+            (j.get("description") or "") + " " + (j.get("requirements") or ""),
+            remote=bool(j.get("remote")), emp_type=j.get("employment_type_code")))
+    return out
+
+
+def breezy(company):
+    data = get_json(f"https://{company}.breezy.hr/json")
+    out = []
+    for j in data if isinstance(data, list) else []:
+        loc = j.get("location") or {}
+        location = loc.get("name") or ", ".join(
+            x for x in [loc.get("city"), (loc.get("country") or {}).get("name") if isinstance(loc.get("country"), dict) else loc.get("country")] if x)
+        out.append(make_job(
+            "breezy", "Company careers page (Breezy)", True, (j.get("company") or {}).get("name") or company.title(),
+            j.get("name"), location, j.get("url"), j.get("published_date"),
+            " ".join(filter(None, [j.get("department"), (j.get("type") or {}).get("name") if isinstance(j.get("type"), dict) else j.get("type")])),
+            remote=bool(loc.get("is_remote"))))
+    return out
+
+
+def get_text(url, timeout=25):
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def personio(company):
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(get_text(f"https://{company}.jobs.personio.de/xml?language=en"))
+    out = []
+    for p in root.iter("position"):
+        g = lambda k: (p.findtext(k) or "").strip()
+        desc = " ".join((d.findtext("value") or "") for d in p.iter("jobDescription"))
+        out.append(make_job(
+            "personio", "Company careers page (Personio)", True, g("subcompany") or company.replace("-", " ").title(),
+            g("name"), g("office"), f"https://{company}.jobs.personio.de/job/{g('id')}", g("createdAt"),
+            " ".join(filter(None, [g("department"), g("recruitingCategory"), desc])), emp_type=g("schedule")))
+    return out
+
+
+def teamtailor(company):
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(get_text(f"https://{company}.teamtailor.com/jobs.rss"))
+    ns = {"tt": "https://teamtailor.com/locations"}
+    out = []
+    for it in root.iter("item"):
+        g = lambda k: (it.findtext(k) or "").strip()
+        locs = [(l.findtext("tt:city", namespaces=ns) or "") + ", " + (l.findtext("tt:country", namespaces=ns) or "")
+                for l in it.findall("tt:locations/tt:location", ns)]
+        remote = (it.findtext("remoteStatus") or "").lower() in ("fully", "remote")
+        out.append(make_job(
+            "teamtailor", "Company careers page (Teamtailor)", True, company.replace("-", " ").title(), g("title"),
+            "; ".join(l.strip(", ") for l in locs if l.strip(", ")), g("link"), g("pubDate"), g("description"),
+            remote=remote))
+    return out
+
+
+def jobicy(geo):
+    # Jobicy allows use in apps if the Jobicy link and credit are kept. Poll at most hourly (we run every 6 h).
+    data = get_json(f"https://jobicy.com/api/v2/remote-jobs?count=100&geo={geo}")
+    out = []
+    for j in data.get("jobs", []):
+        geo_txt = j.get("jobGeo") or ""
+        ok_geo = any(w in geo_txt.lower() for w in REMOTE_OK)
+        out.append(make_job(
+            "jobicy", "Jobicy", False, j.get("companyName"), j.get("jobTitle"),
+            ("Remote · " + geo_txt) if geo_txt else "Remote", j.get("url"), j.get("pubDate"),
+            (j.get("jobExcerpt") or "") + " " + " ".join(j.get("jobIndustry") or []),
+            remote=ok_geo, emp_type=", ".join(j.get("jobType") or []) or None,
+            salary_min=j.get("annualSalaryMin") if j.get("salaryCurrency") == "INR" else None,
+            salary_max=j.get("annualSalaryMax") if j.get("salaryCurrency") == "INR" else None))
+    return out
+
+
+def arbeitnow(page):
+    # Arbeitnow's free API asks for a link back, which the app shows on every job ("via Arbeitnow").
+    data = get_json(f"https://www.arbeitnow.com/api/job-board-api?page={page}")
+    out = []
+    for j in data.get("data", []):
+        if not j.get("remote"):
+            continue
+        loc = (j.get("location") or "")
+        out.append(make_job(
+            "arbeitnow", "Arbeitnow", False, j.get("company_name"), j.get("title"),
+            "Remote · " + loc, j.get("url"), j.get("created_at"),
+            (j.get("description") or "") + " " + " ".join(j.get("tags") or []),
+            remote=any(w in loc.lower() for w in REMOTE_OK)))
+    return out
+
+
 def adzuna(query, app_id, app_key):
     q = urllib.parse.urlencode({
         "app_id": app_id, "app_key": app_key, "results_per_page": 50, "what": query,
@@ -397,6 +497,13 @@ def main():
         tasks.append(("SmartRecruiters", name, smartrecruiters, (name,)))
     for name in cfg.get("workable", []):
         tasks.append(("Workable", name, workable, (name,)))
+    for src, fn in [("Recruitee", recruitee), ("Breezy", breezy), ("Personio", personio), ("Teamtailor", teamtailor)]:
+        for name in cfg.get(src.lower(), []):
+            tasks.append((src, name, fn, (name,)))
+    for geo in cfg.get("jobicy_geos", []):
+        tasks.append(("Jobicy", geo, jobicy, (geo,)))
+    for page in range(1, int(cfg.get("arbeitnow_pages", 0)) + 1):
+        tasks.append(("Arbeitnow", f"page{page}", arbeitnow, (page,)))
     az_id, az_key = os.environ.get("ADZUNA_APP_ID", "").strip(), os.environ.get("ADZUNA_APP_KEY", "").strip()
     adzuna_queries = cfg.get("adzuna_queries", []) if (az_id and az_key) else []
     if not adzuna_queries:
