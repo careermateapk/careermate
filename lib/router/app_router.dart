@@ -15,6 +15,7 @@ import '../features/jobs/ui/job_detail_screen.dart';
 import '../features/jobs/ui/jobs_screen.dart';
 import '../features/jobs/ui/sources_screen.dart';
 import '../features/community/ui/share_job_screen.dart';
+import '../features/resume/ui/resume_screens.dart';
 import '../features/notifications/ui/notifications_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
@@ -51,6 +52,9 @@ class Routes {
   static const sources = '/sources';
   static const notifications = '/notifications';
   static const shareJob = '/share-job';
+  static const cvMaker = '/cv-maker';
+  static const cvMakerEdit = '/cv-maker/edit';
+  static const cvMakerFinal = '/cv-maker/final';
 
   static const _public = {onboarding, login, register, forgot};
 }
@@ -114,6 +118,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsScreen()),
       GoRoute(path: Routes.sources, builder: (_, _) => const SourcesScreen()),
       GoRoute(path: Routes.notifications, builder: (_, _) => const NotificationsScreen()),
+      GoRoute(path: Routes.cvMaker, builder: (_, _) => const ResumeGalleryScreen()),
+      GoRoute(path: Routes.cvMakerEdit, builder: (_, _) => const ResumeEditorScreen()),
+      GoRoute(path: Routes.cvMakerFinal, builder: (_, _) => const ResumeFinalScreen()),
       GoRoute(path: Routes.shareJob, builder: (_, s) => ShareJobScreen(text: s.extra as String? ?? '')),
       GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
       GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),

@@ -47,6 +47,12 @@ dependencies:
   # "Share → CareerMate" from LinkedIn/WhatsApp
   receive_sharing_intent: ^1.9.0
 
+  # CV maker: PDF building, preview and saving
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  flutter_file_dialog: ^3.0.3
+  share_plus: ^11.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

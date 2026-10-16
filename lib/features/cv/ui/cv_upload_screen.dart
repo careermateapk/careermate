@@ -201,6 +201,32 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
                   ]),
                 ),
               ],
+              const SizedBox(height: 12),
+              FadeSlideIn(
+                index: 2,
+                child: AppCard(
+                  onTap: () => context.push(Routes.cvMaker),
+                  child: Row(children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF2F6BFF), Color(0xFF7C3AED)]),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.auto_awesome_mosaic_rounded, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Make a new CV', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        Text('40 templates · PDF, Word or TXT', style: TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+                      ]),
+                    ),
+                    const Icon(Icons.chevron_right_rounded),
+                  ]),
+                ),
+              ),
               const SizedBox(height: 18),
               const FadeSlideIn(index: 2, child: _WhatHappensNext()),
               const SizedBox(height: 14),
