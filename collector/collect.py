@@ -279,9 +279,16 @@ def ashby(board):
 
 
 def smartrecruiters(company_id):
-    data = get_json(f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings?country=in&limit=100")
+    items, offset = [], 0
+    while offset < 600:
+        data = get_json(f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings?country=in&limit=100&offset={offset}")
+        page = data.get("content", [])
+        items.extend(page)
+        if len(page) < 100:
+            break
+        offset += 100
     out = []
-    for j in data.get("content", []):
+    for j in items:
         loc = j.get("location") or {}
         location = ", ".join(x for x in [loc.get("city"), loc.get("region"), "India" if loc.get("country") == "in" else loc.get("country")] if x)
         out.append(make_job(

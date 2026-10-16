@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,8 +61,20 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         showMessage(context, 'Profile saved.');
         context.go(Routes.atsReport);
       }
-    } catch (_) {
-      if (mounted) showMessage(context, 'Could not save. Check your internet and try again.', error: true);
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        showMessage(
+          context,
+          e.code == 'permission-denied'
+              ? 'Saving was blocked by the database rules. Paste the latest rules in Firebase → Firestore → Rules.'
+              : e.code == 'unavailable'
+                  ? 'No internet connection. Please try again.'
+                  : 'Could not save (${e.code}). Please try again.',
+          error: true,
+        );
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Could not save: $e', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

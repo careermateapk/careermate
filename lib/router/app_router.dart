@@ -10,6 +10,9 @@ import '../features/auth/ui/register_screen.dart';
 import '../features/auth/ui/splash_screen.dart';
 import '../features/cv/ui/cv_upload_screen.dart';
 import '../features/home/ui/coming_soon_screen.dart';
+import '../features/jobs/job_models.dart';
+import '../features/jobs/ui/job_detail_screen.dart';
+import '../features/jobs/ui/jobs_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
 import '../features/profile/ui/ats_report_screen.dart';
@@ -32,6 +35,7 @@ class Routes {
   static const cvReview = '/cv-review';
   static const cvCategories = '/cv-categories';
   static const atsReport = '/cv-report';
+  static const jobDetail = '/job';
 
   static const _public = {onboarding, login, register, forgot};
 }
@@ -86,19 +90,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
       GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: Routes.atsReport, builder: (_, _) => const AtsReportScreen()),
+      GoRoute(
+        path: Routes.jobDetail,
+        redirect: (_, state) => state.extra is JobMatch ? null : Routes.jobs,
+        builder: (_, state) => JobDetailScreen(match: state.extra! as JobMatch),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [
           StatefulShellBranch(routes: [GoRoute(path: Routes.home, builder: (_, _) => const DashboardScreen())]),
           StatefulShellBranch(routes: [
-            GoRoute(
-              path: Routes.jobs,
-              builder: (_, _) => const ComingSoonScreen(
-                title: 'Find jobs',
-                icon: Icons.work_outline_rounded,
-                message: 'Job search with match scores is the next build step.',
-              ),
-            ),
+            GoRoute(path: Routes.jobs, builder: (_, _) => const JobsScreen()),
           ]),
           StatefulShellBranch(routes: [GoRoute(path: Routes.cv, builder: (_, _) => const CvUploadScreen())]),
           StatefulShellBranch(routes: [

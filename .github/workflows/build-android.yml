@@ -41,6 +41,9 @@ jobs:
           rm -f test/widget_test.dart
           # App name shown under the icon
           sed -i 's/android:label="careermate"/android:label="CareerMate"/' android/app/src/main/AndroidManifest.xml
+          # Allow opening job links in the browser (Android 11+ package visibility)
+          sed -i 's#<application#<queries><intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent></queries>\n    <application#' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.intent.action.VIEW' android/app/src/main/AndroidManifest.xml
           # Fixed signing key so Google sign-in keeps working (SHA-1 never changes)
           python3 ci/patch_signing.py
 
