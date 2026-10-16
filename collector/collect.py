@@ -398,10 +398,8 @@ def main():
     for name in cfg.get("workable", []):
         tasks.append(("Workable", name, workable, (name,)))
     az_id, az_key = os.environ.get("ADZUNA_APP_ID", "").strip(), os.environ.get("ADZUNA_APP_KEY", "").strip()
-    if az_id and az_key:
-        for q in cfg.get("adzuna_queries", []):
-            tasks.append(("Adzuna", q, adzuna, (q, az_id, az_key)))
-    else:
+    adzuna_queries = cfg.get("adzuna_queries", []) if (az_id and az_key) else []
+    if not adzuna_queries:
         notice("Adzuna skipped: ADZUNA_APP_ID / ADZUNA_APP_KEY secrets are not set.")
 
     jobs, stats = [], {}
@@ -421,6 +419,26 @@ def main():
             except Exception as e:
                 st["errors"] += 1
                 failed.append(f"{src}:{name} → {str(e)[:80]}")
+
+    if adzuna_queries:
+        import time
+        st = stats.setdefault("Adzuna", {"boards": 0, "ok": 0, "jobs": 0, "errors": 0})
+        for q in adzuna_queries:
+            st["boards"] += 1
+            for attempt in range(2):
+                try:
+                    got = [j for j in adzuna(q, az_id, az_key) if j]
+                    st["ok"] += 1
+                    st["jobs"] += len(got)
+                    jobs.extend(got)
+                    (working if got else empty).append(f"Adzuna:{q}({len(got)})" if got else f"Adzuna:{q}")
+                    break
+                except Exception as e:
+                    if attempt == 1:
+                        st["errors"] += 1
+                        failed.append(f"Adzuna:{q} → {str(e)[:80]}")
+                    time.sleep(5)
+            time.sleep(3)  # stay under 25 calls a minute
 
     # Remove duplicates: same company + title + city. Prefer official sources and newer dates.
     jobs.sort(key=lambda j: (not j["official"], -(parse_date(j["postedAt"]) or NOW - dt.timedelta(days=99)).timestamp()))
@@ -447,6 +465,8 @@ def main():
     notice("By source: " + "; ".join(f"{src} {st['jobs']} jobs ({st['ok']}/{st['boards']} boards ok)"
                                       for src, st in sorted(stats.items())))
     top = sorted(((len(v), k) for k, v in by_sub.items() if v), reverse=True)[:12]
+    fin = {k: len(v) for k, v in by_sub.items() if k.startswith("fin_")}
+    notice("Finance & accounts: " + ", ".join(f"{k}={n}" for k, n in fin.items()))
     notice("Busiest sub-categories: " + ", ".join(f"{k}={n}" for n, k in top))
     notice("Boards with jobs: " + ", ".join(sorted(working))[:3500])
     if failed:
