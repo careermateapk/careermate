@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../router/app_router.dart';
 import '../../../theme/app_theme.dart';
@@ -570,10 +568,9 @@ class _ResumeFinalScreenState extends ConsumerState<ResumeFinalScreen> {
   Future<void> _share(ResumeData d) async {
     setState(() => _busy = true);
     try {
-      final (bytes, name, mime) = await _file(d);
-      final f = File('${(await getTemporaryDirectory()).path}/$name');
-      await f.writeAsBytes(bytes, flush: true);
-      await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: mime)], subject: name));
+      // Sharing sends the PDF (best for WhatsApp/email). Word and TXT files are saved with "Save to phone".
+      final bytes = await ResumePdf(d, templateById(d.templateId)).build();
+      await Printing.sharePdf(bytes: bytes, filename: '${_fileBase(d)}.pdf');
     } catch (e) {
       if (mounted) showMessage(context, 'Could not share: $e', error: true);
     } finally {
@@ -684,7 +681,7 @@ class _ResumeFinalScreenState extends ConsumerState<ResumeFinalScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _busy ? null : () => _share(d),
                         icon: const Icon(Icons.share_rounded, size: 18),
-                        label: const FittedBox(child: Text('Share')),
+                        label: const FittedBox(child: Text('Share PDF')),
                       ),
                     ),
                   ]),
