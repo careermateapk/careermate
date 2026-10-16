@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../profile/cv_parser.dart';
 import '../profile/profile_repository.dart';
+import '../recruiter/posted_job.dart';
 
 /// One job from the collector (jobs_index/{subCategoryId}.jobs[]).
 class JobItem {
@@ -26,6 +27,8 @@ class JobItem {
     required this.skills,
     required this.subIds,
     required this.scamFlags,
+    this.postedJobId,
+    this.contactEmail = '',
   });
 
   final String id;
@@ -50,7 +53,14 @@ class JobItem {
   final List<String> subIds;
   final List<String> scamFlags;
 
+  /// Set for jobs posted by recruiters on CareerMate.
+  final String? postedJobId;
+
+  /// Recruiter email for CareerMate jobs (empty for collected jobs).
+  final String contactEmail;
+
   bool get isAdzuna => source == 'adzuna';
+  bool get isCareerMate => postedJobId != null;
 
   int? get ageDays => postedAt == null ? null : DateTime.now().difference(postedAt!).inDays;
 
@@ -180,6 +190,15 @@ final jobsProvider = FutureProvider.autoDispose<JobsData>((ref) async {
       final j = JobItem.fromMap(Map<String, dynamic>.from(raw as Map));
       byId[j.id] = j;
     }
+  }
+  // Jobs posted by recruiters on CareerMate come first in the list.
+  try {
+    final posted = await ref.watch(recruiterRepositoryProvider).liveJobsFor(profile.subCategoryIds);
+    for (final p in posted) {
+      byId[p.toJobItem().id] = p.toJobItem();
+    }
+  } catch (_) {
+    // Rules not updated yet or offline: show collected jobs only.
   }
   return JobsData(byId.values.toList(), updated);
 });

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers.dart';
 import '../../../router/app_router.dart';
+import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../auth_repository.dart';
 import 'auth_scaffold.dart';
@@ -19,6 +21,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _company = TextEditingController();
+  final _designation = TextEditingController();
+  final _city = TextEditingController();
+  final _website = TextEditingController();
+  UserRole _role = UserRole.seeker;
   bool _hide = true;
   bool _agreed = false;
   bool _busy = false;
@@ -28,18 +35,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _company.dispose();
+    _designation.dispose();
+    _city.dispose();
+    _website.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (!_agreed) {
-      showMessage(context, 'Please accept the privacy policy to continue.', error: true);
+      showMessage(
+          context,
+          _role == UserRole.recruiter
+              ? 'Please confirm you will post only real jobs.'
+              : 'Please accept the privacy policy to continue.',
+          error: true);
       return;
     }
     setState(() => _busy = true);
     try {
-      await ref.read(authRepositoryProvider).register(name: _name.text, email: _email.text, password: _password.text);
+      await ref.read(authRepositoryProvider).register(
+            name: _name.text,
+            email: _email.text,
+            password: _password.text,
+            role: _role,
+            company: _role == UserRole.recruiter
+                ? {
+                    'company': _company.text.trim(),
+                    'designation': _designation.text.trim(),
+                    'companyCity': _city.text.trim(),
+                    'companyWebsite': _website.text.trim(),
+                  }
+                : const {},
+          );
       if (mounted) showMessage(context, 'Account created! We sent a verification link to your email.');
     } on AuthFailure catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
@@ -52,10 +81,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'Create your account',
-      subtitle: 'Free to start. Takes less than a minute.',
+      subtitle: 'I am a',
       children: [
-        const GoogleButton(),
-        const OrDivider(),
+        RolePicker(value: _role, onChanged: (r) => setState(() => _role = r)),
+        const SizedBox(height: 14),
+        if (_role == UserRole.seeker) ...[
+          const GoogleButton(),
+          const OrDivider(),
+        ] else
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(color: AppColors.amberTint, borderRadius: BorderRadius.circular(14)),
+            child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.verified_user_outlined, color: AppColors.amberText, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Use your company email. We verify every recruiter so job seekers stay safe from fake jobs.',
+                    style: TextStyle(color: AppColors.amberText, fontWeight: FontWeight.w600, fontSize: 12.5, height: 1.45)),
+              ),
+            ]),
+          ),
         Form(
           key: _form,
           child: AutofillGroup(
@@ -74,8 +120,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-                validator: validateEmail,
+                decoration: InputDecoration(
+                  labelText: _role == UserRole.recruiter ? 'Work email' : 'Email',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded),
+                ),
+                validator: (v) {
+                  final e = validateEmail(v);
+                  if (e != null) return e;
+                  if (_role == UserRole.recruiter && !isCompanyEmail(v!)) return 'Use your company email, not Gmail/Yahoo/Outlook';
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -103,6 +157,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   return null;
                 },
               ),
+              if (_role == UserRole.recruiter) ...[
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('COMPANY', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .5, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _company,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Company name', prefixIcon: Icon(Icons.business_outlined)),
+                  validator: (v) => (v == null || v.trim().length < 2) ? 'Enter your company name' : null,
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _designation,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'Your role'),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _city,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'City'),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _website,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(labelText: 'Company website (optional)', prefixIcon: Icon(Icons.language_rounded)),
+                ),
+              ],
             ]),
           ),
         ),
@@ -112,13 +206,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           onChanged: (v) => setState(() => _agreed = v ?? false),
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
-          title: const Text(
-            'I agree that my CV and profile are stored securely to find jobs for me. I can delete them anytime.',
-            style: TextStyle(fontSize: 13),
+          title: Text(
+            _role == UserRole.recruiter
+                ? 'I will post only real jobs and never ask candidates for money.'
+                : 'I agree that my CV and profile are stored securely to find jobs for me. I can delete them anytime.',
+            style: const TextStyle(fontSize: 13),
           ),
         ),
         const SizedBox(height: 8),
-        LoadingButton(label: 'Create account', loading: _busy, onPressed: _submit),
+        LoadingButton(label: _role == UserRole.recruiter ? 'Create recruiter account' : 'Create account', loading: _busy, onPressed: _submit),
         const SizedBox(height: 14),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('Already have an account?'),

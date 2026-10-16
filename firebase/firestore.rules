@@ -3,12 +3,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
     function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return signedIn() && request.auth.uid == uid;
     }
     function isCollector() {
-      return request.auth != null
-        && request.auth.token.email == 'aggarwal97kajal+careermate-collector@gmail.com';
+      return signedIn() && request.auth.token.email == 'aggarwal97kajal+careermate-collector@gmail.com';
+    }
+    function isVerifiedRecruiter() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && !request.auth.token.email.matches('.*@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)[.].*')
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter';
+    }
+    function jobOwner(jobId) {
+      return get(/databases/$(database)/documents/posted_jobs/$(jobId)).data.recruiterUid;
     }
 
     // Each user's own data
@@ -19,14 +30,32 @@ service cloud.firestore {
       }
     }
 
-    // Jobs: any signed-in user can read; only the job collector can write
+    // Jobs collected from company sites: read by users, written by the collector
     match /jobs_index/{doc} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isCollector();
     }
     match /meta/{doc} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
       allow write: if isCollector();
+    }
+
+    // Jobs posted by verified recruiters
+    match /posted_jobs/{jobId} {
+      allow read: if signedIn();
+      allow create: if isVerifiedRecruiter() && request.resource.data.recruiterUid == request.auth.uid;
+      allow update: if isVerifiedRecruiter() && resource.data.recruiterUid == request.auth.uid
+        && request.resource.data.recruiterUid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.recruiterUid == request.auth.uid;
+
+      // Applications: the job seeker creates their own; the job's recruiter reads them and changes status
+      match /applications/{seekerUid} {
+        allow create: if isOwner(seekerUid) && request.resource.data.status == 'new';
+        allow read: if isOwner(seekerUid) || (signedIn() && jobOwner(jobId) == request.auth.uid);
+        allow update: if signedIn() && jobOwner(jobId) == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+        allow delete: if isOwner(seekerUid) || (signedIn() && jobOwner(jobId) == request.auth.uid);
+      }
     }
 
     match /{document=**} {

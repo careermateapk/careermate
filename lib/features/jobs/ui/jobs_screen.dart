@@ -74,7 +74,10 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         _Filter.official => j.official,
       };
     }).toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+      ..sort((a, b) {
+        if (a.job.isCareerMate != b.job.isCareerMate) return a.job.isCareerMate ? -1 : 1;
+        return b.score.compareTo(a.score);
+      });
 
     final updated = data.updatedAt;
     final updatedText = updated == null ? 'not collected yet' : 'updated ${_ago(updated)}';
@@ -207,7 +210,10 @@ class _JobCard extends StatelessWidget {
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 6, children: [
           if (j.scamFlags.isNotEmpty) const StatusChip('Suspicious: asks for money', tone: ChipTone.risk),
-          StatusChip(j.official ? 'Company careers page' : 'via ${j.sourceName}', tone: j.official ? ChipTone.positive : ChipTone.info),
+          if (j.isCareerMate)
+            const StatusChip('Posted on CareerMate', tone: ChipTone.info)
+          else
+            StatusChip(j.official ? 'Company careers page' : 'via ${j.sourceName}', tone: j.official ? ChipTone.positive : ChipTone.info),
           if (j.remote) const StatusChip('Remote'),
           if (j.looksFresherFriendly) const StatusChip('Fresher-friendly'),
           if (j.employmentType != null && j.employmentType!.isNotEmpty) StatusChip(j.employmentType!),

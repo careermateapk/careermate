@@ -33,6 +33,10 @@ dependencies:
   # Opening job links
   url_launcher: ^6.3.1
 
+  # Email with the CV attached from the phone; local CV copy
+  flutter_email_sender: ^11.2.0
+  path_provider: ^2.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

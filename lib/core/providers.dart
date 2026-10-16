@@ -30,7 +30,32 @@ final authStateProvider = StreamProvider<User?>(
 class PrefKeys {
   static const onboardingDone = 'onboarding_done';
   static const themeMode = 'theme_mode';
-  static const all = {onboardingDone, themeMode};
+  static const localCvPath = 'local_cv_path';
+  static const localCvName = 'local_cv_name';
+  static const all = {onboardingDone, themeMode, localCvPath, localCvName};
+}
+
+enum UserRole { seeker, recruiter }
+
+UserRole roleFrom(Object? v) => v == 'recruiter' ? UserRole.recruiter : UserRole.seeker;
+
+/// The signed-in user's account document (users/{uid}): role, company details.
+final userDocProvider = StreamProvider<Map<String, dynamic>?>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value(null);
+  return ref.watch(firestoreProvider).collection('users').doc(user.uid).snapshots().map((s) => s.data());
+});
+
+/// Email domains anyone can sign up for. Recruiters must use a company email.
+const freeEmailDomains = {
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.in', 'ymail.com', 'rediffmail.com',
+  'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'aol.com', 'proton.me',
+  'protonmail.com', 'zoho.com', 'zohomail.in', 'gmx.com', 'mail.com', 'yandex.com', 'tutanota.com',
+};
+
+bool isCompanyEmail(String email) {
+  final at = email.trim().toLowerCase().split('@');
+  return at.length == 2 && at[1].contains('.') && !freeEmailDomains.contains(at[1]);
 }
 
 /// Whether the user has finished the intro screens on this device.

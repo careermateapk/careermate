@@ -13,6 +13,7 @@ import '../../profile/cv_analysis.dart';
 import '../../profile/profile_repository.dart';
 import '../../profile/text_extractor.dart';
 import '../cv_repository.dart';
+import '../local_cv.dart';
 
 enum _Phase { idle, reading, uploading, analysing, done }
 
@@ -56,6 +57,10 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
               if (mounted) setState(() => _progress = p);
             },
           );
+      // Keep a copy on this phone so it can be attached to emails.
+      try {
+        await ref.read(localCvProvider).save(file.name, bytes);
+      } catch (_) {}
       if (!mounted) return;
       setState(() => _phase = _Phase.analysing);
       final text = await const TextExtractor().extract(file.name, bytes);
@@ -115,6 +120,7 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
     try {
       await ref.read(cvRepositoryProvider).deleteAll(user.uid);
       await ref.read(profileRepositoryProvider).delete(user.uid);
+      await ref.read(localCvProvider).delete();
       if (mounted) {
         setState(() => _phase = _Phase.idle);
         showMessage(context, 'CV deleted.');

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers.dart';
 import '../../../router/app_router.dart';
 import '../../../widgets/common.dart';
 import '../auth_repository.dart';
@@ -20,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _hide = true;
   bool _busy = false;
+  UserRole _role = UserRole.seeker;
 
   @override
   void dispose() {
@@ -32,7 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      await ref.read(authRepositoryProvider).signInWithEmail(_email.text, _password.text);
+      await ref.read(authRepositoryProvider).signInWithEmail(_email.text, _password.text, role: _role);
       // The router moves to Home automatically once signed in.
     } on AuthFailure catch (e) {
       if (mounted) showMessage(context, e.message, error: true);
@@ -45,8 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'Welcome back',
-      subtitle: 'Log in to see your matches and applications.',
+      subtitle: 'Log in as',
       children: [
+        RolePicker(value: _role, onChanged: (r) => setState(() => _role = r)),
+        const SizedBox(height: 16),
         Form(
           key: _form,
           child: AutofillGroup(
@@ -84,9 +88,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           alignment: Alignment.centerRight,
           child: TextButton(onPressed: () => context.push(Routes.forgot), child: const Text('Forgot password?')),
         ),
-        LoadingButton(label: 'Log in', loading: _busy, onPressed: _submit),
-        const OrDivider(),
-        const GoogleButton(allowNewAccount: false),
+        LoadingButton(label: _role == UserRole.recruiter ? 'Log in as recruiter' : 'Log in as job seeker', loading: _busy, onPressed: _submit),
+        if (_role == UserRole.seeker) ...[
+          const OrDivider(),
+          const GoogleButton(allowNewAccount: false),
+        ],
         const SizedBox(height: 18),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('New here?'),

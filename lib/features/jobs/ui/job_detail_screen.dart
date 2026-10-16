@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/providers.dart';
 
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
+import '../../outreach/ui/email_compose_screen.dart';
 import '../../profile/cv_parser.dart';
+import '../../recruiter/posted_job.dart';
 import '../job_models.dart';
 import 'jobs_screen.dart' show postedText;
 
@@ -146,11 +151,26 @@ class JobDetailScreen extends StatelessWidget {
       ]),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-        child: FilledButton.icon(
-          onPressed: () => _open(context, j.url),
-          icon: const Icon(Icons.open_in_new_rounded),
-          label: Text(j.official ? 'Apply on company site' : 'View job on ${j.sourceName}'),
-        ),
+        child: j.isCareerMate
+            ? _CareerMateApply(match: match)
+            : Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => openEmailComposer(context, match),
+                    icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                    label: const Text('Email'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: () => _open(context, j.url),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: Text(j.official ? 'Apply on site' : 'View on ${j.sourceName}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ]),
       ),
     );
   }
@@ -198,7 +218,9 @@ class _Authenticity extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, tone, icon, color) = job.scamFlags.isNotEmpty
         ? ('Suspicious indicators found', ChipTone.risk, Icons.gpp_bad_outlined, AppColors.red)
-        : job.official
+        : job.isCareerMate
+            ? ('Verified recruiter', ChipTone.positive, Icons.verified_user_outlined, AppColors.green)
+            : job.official
             ? ('Official source confirmed', ChipTone.positive, Icons.verified_user_outlined, AppColors.green)
             : ('Needs further verification', ChipTone.warning, Icons.shield_outlined, AppColors.amber);
     final checked = job.lastChecked;
@@ -211,7 +233,9 @@ class _Authenticity extends StatelessWidget {
           StatusChip(label, tone: tone),
         ]),
         const SizedBox(height: 10),
-        if (job.official)
+        if (job.isCareerMate)
+          const _Line(icon: Icons.check_rounded, color: AppColors.green, text: 'Posted on CareerMate by a recruiter whose company email is verified.')
+        else if (job.official)
           const _Line(icon: Icons.check_rounded, color: AppColors.green, text: "Published on the company's own hiring page.")
         else
           _Line(icon: Icons.info_outline_rounded, color: AppColors.amber, text: 'Found through ${job.sourceName}. Check the job on the company’s own website before sharing documents.'),
@@ -224,6 +248,37 @@ class _Authenticity extends StatelessWidget {
         ),
         Text('Source: ${job.sourceName}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
       ]),
+    );
+  }
+}
+
+
+/// Apply button for jobs posted on CareerMate; shows "Applied" once done.
+class _CareerMateApply extends ConsumerWidget {
+  const _CareerMateApply({required this.match});
+  final JobMatch match;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final uid = ref.watch(authStateProvider).value?.uid;
+    final jobId = match.job.postedJobId!;
+    return FutureBuilder<bool>(
+      future: uid == null ? Future.value(false) : ref.read(recruiterRepositoryProvider).hasApplied(jobId, uid),
+      builder: (context, snap) {
+        final applied = snap.data ?? false;
+        if (applied) {
+          return FilledButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.check_circle_rounded),
+            label: const Text('Applied'),
+          );
+        }
+        return FilledButton.icon(
+          onPressed: () => openEmailComposer(context, match),
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Apply with my CV'),
+        );
+      },
     );
   }
 }

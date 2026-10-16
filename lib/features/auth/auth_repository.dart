@@ -30,20 +30,55 @@ class AuthRepository {
 
   User? get currentUser => _auth.currentUser;
 
-  Future<void> signInWithEmail(String email, String password) async {
-    await _guard(() => _auth.signInWithEmailAndPassword(email: email.trim(), password: password));
+  /// Signs in and checks the account was made for [role]. On a mismatch the
+  /// user is signed out and told which option to choose.
+  Future<void> signInWithEmail(String email, String password, {UserRole role = UserRole.seeker}) async {
+    _busy.value = true;
+    try {
+      await _guard(() async {
+        final cred = await _auth.signInWithEmailAndPassword(email: email.trim(), password: password);
+        await _checkRole(cred.user!, role);
+      });
+    } finally {
+      _busy.value = false;
+    }
   }
 
-  Future<void> register({required String name, required String email, required String password}) async {
-    await _guard(() async {
-      final cred = await _auth.createUserWithEmailAndPassword(email: email.trim(), password: password);
-      final user = cred.user!;
-      await user.updateDisplayName(name.trim());
-      await _saveProfile(user, provider: 'password', name: name.trim());
-      // Verification mail is free; the app still works before verifying.
-      await user.sendEmailVerification();
-      await user.reload();
-    });
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    UserRole role = UserRole.seeker,
+    Map<String, String> company = const {},
+  }) async {
+    if (role == UserRole.recruiter && !isCompanyEmail(email)) {
+      throw AuthFailure('Please use your company email (not Gmail, Yahoo or Outlook) to register as a recruiter.');
+    }
+    _busy.value = true;
+    try {
+      await _guard(() async {
+        final cred = await _auth.createUserWithEmailAndPassword(email: email.trim(), password: password);
+        final user = cred.user!;
+        await user.updateDisplayName(name.trim());
+        await _saveProfile(user, provider: 'password', name: name.trim(), role: role, extra: company);
+        // Verification mail is free. Recruiters must verify before posting jobs.
+        await user.sendEmailVerification();
+        await user.reload();
+      });
+    } finally {
+      _busy.value = false;
+    }
+  }
+
+  Future<void> _checkRole(User user, UserRole wanted) async {
+    final doc = await _db.collection('users').doc(user.uid).get();
+    final actual = roleFrom(doc.data()?['role']);
+    if (actual != wanted) {
+      await signOut();
+      throw AuthFailure(actual == UserRole.recruiter
+          ? 'This is a recruiter account. Choose "Recruiter" to log in.'
+          : 'This is a job seeker account. Choose "Job seeker" to log in.');
+    }
   }
 
   Future<void> sendPasswordReset(String email) async {
@@ -94,7 +129,9 @@ class AuthRepository {
         throw AuthFailure('No account found for ${user.email ?? 'this Google account'}. Please create an account first.');
       }
       if (isNew) {
-        await _saveProfile(user, provider: 'google', name: user.displayName ?? '');
+        await _saveProfile(user, provider: 'google', name: user.displayName ?? '', role: UserRole.seeker);
+      } else {
+        await _checkRole(user, UserRole.seeker);
       }
     });
   }
@@ -110,11 +147,14 @@ class AuthRepository {
     await _auth.signOut();
   }
 
-  Future<void> _saveProfile(User user, {required String provider, required String name}) {
+  Future<void> _saveProfile(User user,
+      {required String provider, required String name, required UserRole role, Map<String, String> extra = const {}}) {
     return _db.collection('users').doc(user.uid).set({
       'displayName': name,
       'email': user.email,
       'authProvider': provider,
+      'role': role.name,
+      ...extra,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

@@ -15,7 +15,12 @@ import '../features/jobs/ui/job_detail_screen.dart';
 import '../features/jobs/ui/jobs_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
+import '../features/outreach/ui/email_compose_screen.dart';
 import '../features/profile/ui/ats_report_screen.dart';
+import '../features/recruiter/posted_job.dart';
+import '../features/recruiter/ui/applicants_screen.dart';
+import '../features/recruiter/ui/post_job_screen.dart';
+import '../features/recruiter/ui/recruiter_home_screen.dart';
 import '../features/profile/ui/categories_screen.dart';
 import '../features/profile/ui/cv_review_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
@@ -36,6 +41,10 @@ class Routes {
   static const cvCategories = '/cv-categories';
   static const atsReport = '/cv-report';
   static const jobDetail = '/job';
+  static const emailRecruiter = '/email';
+  static const recruiterHome = '/r';
+  static const recruiterPost = '/r/post';
+  static const recruiterApplicants = '/r/applicants';
 
   static const _public = {onboarding, login, register, forgot};
 }
@@ -45,6 +54,7 @@ class _RouterRefresh extends ChangeNotifier {
   _RouterRefresh(Ref ref) {
     ref.listen(authStateProvider, (_, _) => notifyListeners());
     ref.listen(onboardingProvider, (_, _) => notifyListeners());
+    ref.listen(userDocProvider, (_, _) => notifyListeners());
     _busy = ref.read(authFlowBusyProvider)..addListener(notifyListeners);
   }
 
@@ -77,7 +87,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (Routes._public.contains(loc)) return null;
         return onboarded ? Routes.login : Routes.onboarding;
       }
-      if (loc == Routes.splash || Routes._public.contains(loc)) return Routes.home;
+      final userDoc = ref.read(userDocProvider);
+      if (userDoc.isLoading && !userDoc.hasValue) return loc == Routes.splash ? null : Routes.splash;
+      final isRecruiter = roleFrom(userDoc.value?['role']) == UserRole.recruiter;
+      final home = isRecruiter ? Routes.recruiterHome : Routes.home;
+
+      if (loc == Routes.splash || Routes._public.contains(loc)) return home;
+      if (loc == Routes.settings) return null;
+      final inRecruiterArea = loc == Routes.recruiterHome || loc.startsWith('${Routes.recruiterHome}/');
+      if (isRecruiter && !inRecruiterArea) return Routes.recruiterHome;
+      if (!isRecruiter && inRecruiterArea) return Routes.home;
       return null;
     },
     routes: [
@@ -90,6 +109,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
       GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: Routes.atsReport, builder: (_, _) => const AtsReportScreen()),
+      GoRoute(
+        path: Routes.emailRecruiter,
+        redirect: (_, state) => state.extra is EmailDraftArgs ? null : Routes.jobs,
+        builder: (_, state) => EmailComposeScreen(args: state.extra! as EmailDraftArgs),
+      ),
+      GoRoute(path: Routes.recruiterHome, builder: (_, _) => const RecruiterHomeScreen()),
+      GoRoute(
+        path: Routes.recruiterPost,
+        builder: (_, state) => PostJobScreen(existing: state.extra is PostedJob ? state.extra! as PostedJob : null),
+      ),
+      GoRoute(
+        path: Routes.recruiterApplicants,
+        redirect: (_, state) => state.extra is PostedJob ? null : Routes.recruiterHome,
+        builder: (_, state) => ApplicantsScreen(job: state.extra! as PostedJob),
+      ),
       GoRoute(
         path: Routes.jobDetail,
         redirect: (_, state) => state.extra is JobMatch ? null : Routes.jobs,

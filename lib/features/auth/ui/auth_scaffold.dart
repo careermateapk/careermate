@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
@@ -152,4 +153,111 @@ String? validateEmail(String? v) {
   if (s.isEmpty) return 'Enter your email';
   if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s)) return 'Enter a valid email';
   return null;
+}
+
+/// Two cards: Job seeker / Recruiter.
+class RolePicker extends StatelessWidget {
+  const RolePicker({super.key, required this.value, required this.onChanged});
+  final UserRole value;
+  final ValueChanged<UserRole> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Expanded(
+        child: _RoleCard(
+          selected: value == UserRole.seeker,
+          icon: Icons.search_rounded,
+          iconBg: AppColors.blue,
+          iconFg: Colors.white,
+          title: 'Job seeker',
+          subtitle: 'Find jobs that match your CV',
+          onTap: () => onChanged(UserRole.seeker),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: _RoleCard(
+          selected: value == UserRole.recruiter,
+          icon: Icons.person_add_alt_1_rounded,
+          iconBg: AppColors.amberTint,
+          iconFg: AppColors.amber,
+          title: 'Recruiter',
+          subtitle: 'Post jobs and find candidates',
+          onTap: () => onChanged(UserRole.recruiter),
+        ),
+      ),
+    ]);
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  const _RoleCard({
+    required this.selected,
+    required this.icon,
+    required this.iconBg,
+    required this.iconFg,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final bool selected;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconFg;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AppMotion.medium,
+          curve: AppMotion.curve,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.blue.withValues(alpha: 0.08) : scheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: selected ? AppColors.blue : scheme.outline, width: selected ? 2 : 1.5),
+            boxShadow: selected ? [BoxShadow(color: AppColors.blue.withValues(alpha: 0.18), blurRadius: 20, offset: const Offset(0, 8))] : null,
+          ),
+          child: Stack(children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: iconFg, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: TextStyle(fontSize: 12, height: 1.35, color: scheme.onSurface.withValues(alpha: 0.65))),
+            ]),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: AnimatedScale(
+                scale: selected ? 1 : 0,
+                duration: AppMotion.medium,
+                curve: Curves.easeOutBack,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: const BoxDecoration(color: AppColors.blue, shape: BoxShape.circle),
+                  child: const Icon(Icons.check_rounded, size: 15, color: Colors.white),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
