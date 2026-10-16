@@ -59,7 +59,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       ref.read(cvDraftProvider.notifier).set(null);
       if (mounted) {
         showMessage(context, 'Profile saved.');
-        context.go(Routes.atsReport);
+        // Back from the report returns to the CV tab instead of closing the app.
+        context.go(Routes.cv);
+        context.push(Routes.atsReport);
       }
     } on FirebaseException catch (e) {
       if (mounted) {

@@ -64,7 +64,8 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
       } catch (_) {}
       if (!mounted) return;
       setState(() => _phase = _Phase.analysing);
-      final text = await const TextExtractor().extract(file.name, bytes);
+      final extracted = await const TextExtractor().extractSmart(file.name, bytes);
+      final text = extracted.text;
       if (text.trim().length < 80) {
         if (mounted) {
           setState(() {
@@ -76,7 +77,7 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
         return;
       }
       final draft = draftFromText(text,
-          fileName: file.name, fallbackEmail: user.email ?? '', fallbackName: user.displayName ?? '');
+          fileName: file.name, fallbackEmail: user.email ?? '', fallbackName: user.displayName ?? '', usedOcr: extracted.usedOcr);
       ref.read(cvDraftProvider.notifier).set(CvDraft(profile: draft, text: text, fileName: file.name));
       if (!mounted) return;
       await CvScanScreen.show(context, profile: draft, fileName: file.name);

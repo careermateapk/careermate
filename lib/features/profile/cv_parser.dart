@@ -17,7 +17,11 @@ class ParsedCv {
     required this.sections,
     required this.bullets,
     required this.dateRanges,
+    this.usedOcr = false,
   });
+
+  /// True when some text had to be read from pictures inside the CV (OCR).
+  final bool usedOcr;
 
   final String text;
   final String name;
@@ -52,7 +56,7 @@ class CvParser {
 
   static const _sectionWords = {
     'summary': ['summary', 'profile', 'objective', 'career objective', 'about me', 'professional summary', 'profile summary'],
-    'experience': ['experience', 'work experience', 'professional experience', 'employment', 'employment history', 'work history', 'internship', 'internships', 'career history'],
+    'experience': ['experience', 'work experience', 'professional experience', 'employment', 'employment history', 'work history', 'professional history', 'job history', 'internship', 'internships', 'career history'],
     'education': ['education', 'academic', 'academics', 'qualification', 'qualifications', 'educational qualification', 'academic qualification'],
     'skills': ['skills', 'technical skills', 'key skills', 'core competencies', 'competencies', 'expertise', 'areas of expertise', 'it skills', 'skill set'],
     'projects': ['projects', 'academic projects', 'key projects', 'personal projects'],
@@ -83,8 +87,28 @@ class CvParser {
     'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12,
   };
 
-  ParsedCv parse(String raw) {
-    final text = raw.replaceAll('\r', '\n').replaceAll(' ', ' ');
+  /// Fixes text broken by some PDF tools: "01 /2 01 8" → "01/2018", "Pr ese nt" → "Present".
+  static String normalize(String raw) {
+    var t = raw.replaceAll('\r', '\n').replaceAll(' ', ' ');
+    // Spaces inside dates like "05/ 201 9" or "1 2/2020".
+    t = t.replaceAllMapped(RegExp(r'\b(\d)\s(\d)\s*([/.])'), (m) => '${m[1]}${m[2]}${m[3]}');
+    t = t.replaceAllMapped(RegExp(r'\b(\d{1,2})\s*([/.])\s*((?:\d\s?){3}\d)\b'), (m) => '${m[1]}${m[2]}${m[3]!.replaceAll(' ', '')}');
+    for (final w in ['present', 'current', 'ongoing']) {
+      final pattern = w.split('').map(RegExp.escape).join(r'\s?');
+      t = t.replaceAll(RegExp('\\b$pattern\\b', caseSensitive: false), w[0].toUpperCase() + w.substring(1));
+    }
+    return t;
+  }
+
+  /// Separates OCR text (first) from the PDF's own text layer (after it).
+  static const textLayerMarker = '<<<pdf-text>>>';
+
+  ParsedCv parse(String raw, {bool usedOcr = false}) {
+    final full = normalize(raw);
+    // Dates are read from the PDF text layer when OCR text was added in front of it,
+    // because OCR mixes the order of headings and dates on two-column CVs.
+    final dateSource = full.contains(textLayerMarker) ? full.split(textLayerMarker).last : full;
+    final text = full.replaceAll(textLayerMarker, '');
     final lines = text
         .split('\n')
         .map((l) => l.replaceAll(RegExp(r'\s+'), ' ').trim())
@@ -127,8 +151,21 @@ class CvParser {
       }
     }
 
-    final expLines = sections['experience'] ?? lines.where((l) => !(sections['education'] ?? const []).contains(l)).toList();
-    final ranges = dateRanges(expLines.join('\n'));
+    // Experience counts only work dates: education, projects, courses and awards are left out.
+    final dLines = dateSource
+        .split('\n')
+        .map((l) => l.replaceAll(RegExp(r'\s+'), ' ').trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final dSections = _sections(dLines);
+    final notWork = <String>{
+      for (final k in const ['education', 'projects', 'certifications', 'achievements', 'personal']) ...?dSections[k],
+    };
+    var ranges = dateRanges((dSections['experience'] ?? dLines).where((l) => !notWork.contains(l)).join('\n'));
+    if (ranges.isEmpty) ranges = dateRanges(dLines.where((l) => !notWork.contains(l)).join('\n'));
+    final years = _years(ranges);
+    final stated = RegExp(r'(\d{1,2}(?:\.\d)?)\+?\s*(?:years|yrs)\b[^.\n]{0,25}experience', caseSensitive: false).firstMatch(text);
+    final statedYears = stated == null ? 0.0 : double.tryParse(stated.group(1)!) ?? 0.0;
 
     return ParsedCv(
       text: text,
@@ -140,10 +177,11 @@ class CvParser {
       skills: skills.toList(),
       titles: titles.toList(),
       education: education.map(prettySkill).toList(),
-      experienceYears: _years(ranges),
+      experienceYears: years > 0 ? years : statedYears,
       sections: sections,
       bullets: bullets,
       dateRanges: ranges,
+      usedOcr: usedOcr,
     );
   }
 
@@ -209,13 +247,30 @@ class CvParser {
     return '';
   }
 
+  static String _title(String c) => c.split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+
+  /// City near the top of the CV; otherwise the city mentioned most often (e.g. job lines "…, New Delhi").
   String _location(List<String> lines) {
+    final byLength = [...cities.where((c) => c != 'remote')]..sort((a, b) => b.length.compareTo(a.length));
     final n = (lines.length * 0.3).ceil();
     final head = lines.take(n < 6 ? 6 : (n > 25 ? 25 : n)).join(' ').toLowerCase();
-    for (final c in cities) {
-      if (containsWord(head, c)) return c.split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+    for (final c in byLength) {
+      if (containsWord(head, c)) return _title(c);
     }
-    return '';
+    var all = lines.join(' ').toLowerCase();
+    String? best;
+    var bestN = 0;
+    for (final c in byLength) {
+      final re = RegExp('(?<![a-z])${RegExp.escape(c)}(?![a-z])');
+      final count = re.allMatches(all).length;
+      // Blank out "new delhi" before counting "delhi", so the longer name wins.
+      all = all.replaceAll(re, ' ');
+      if (count > bestN) {
+        best = c;
+        bestN = count;
+      }
+    }
+    return best == null ? '' : _title(best);
   }
 
   /// Finds ranges like "Jan 2021 – Present", "03/2019 - 08/2022", "2018 to 2020".

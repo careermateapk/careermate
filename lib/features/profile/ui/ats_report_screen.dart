@@ -52,6 +52,8 @@ class _Report extends StatelessWidget {
     final score = p.atsScore!;
     final verdict = score >= 80 ? 'Strong' : score >= 60 ? 'Good, with room to grow' : score >= 40 ? 'Needs work' : 'Needs a lot of work';
     final ringColor = score >= 75 ? AppColors.green : score >= 50 ? AppColors.blue : AppColors.amber;
+    final found = p.atsIssues.where((i) => i['severity'] == 'ok').toList();
+    final issues = p.atsIssues.where((i) => i['severity'] != 'ok').toList();
 
     return Center(
       child: ConstrainedBox(
@@ -82,11 +84,33 @@ class _Report extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            if (p.atsIssues.isNotEmpty) ...[
-              FadeSlideIn(index: 1, child: Text('What to improve first', style: AppTheme.display(context, size: 16))),
+            if (found.isNotEmpty) ...[
+              FadeSlideIn(
+                index: 1,
+                child: AppCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('ALREADY IN YOUR CV',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .5, color: AppColors.textMuted)),
+                    const SizedBox(height: 8),
+                    for (final f in found)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 18),
+                          const SizedBox(width: 9),
+                          Expanded(child: Text(f['title'] ?? '', style: const TextStyle(fontSize: 13.5))),
+                        ]),
+                      ),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
+            if (issues.isNotEmpty) ...[
+              FadeSlideIn(index: 1, child: Text('Still worth fixing', style: AppTheme.display(context, size: 16))),
               const SizedBox(height: 10),
-              for (var i = 0; i < p.atsIssues.length; i++) ...[
-                FadeSlideIn(index: i + 2, child: _IssueCard(issue: p.atsIssues[i])),
+              for (var i = 0; i < issues.length; i++) ...[
+                FadeSlideIn(index: i + 2, child: _IssueCard(issue: issues[i])),
                 const SizedBox(height: 10),
               ],
             ] else

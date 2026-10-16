@@ -3,8 +3,9 @@ import 'cv_parser.dart';
 import 'profile_repository.dart';
 
 /// Turns raw CV text into a draft profile (with ATS score) for review.
-CareerProfile draftFromText(String text, {required String fileName, String fallbackEmail = '', String fallbackName = ''}) {
-  final parsed = CvParser().parse(text);
+CareerProfile draftFromText(String text,
+    {required String fileName, String fallbackEmail = '', String fallbackName = '', bool usedOcr = false}) {
+  final parsed = CvParser().parse(text, usedOcr: usedOcr);
   final ats = const AtsScorer().score(parsed);
   return CareerProfile(
     name: parsed.name.isNotEmpty ? parsed.name : fallbackName,
@@ -18,7 +19,10 @@ CareerProfile draftFromText(String text, {required String fileName, String fallb
     education: parsed.education,
     atsScore: ats.total,
     atsParts: {for (final p in ats.parts) p.key: p.score},
-    atsIssues: ats.issues.map(issueToMap).toList(),
+    atsIssues: [
+      ...ats.issues.map(issueToMap),
+      for (final f in ats.found) {'severity': 'ok', 'title': f, 'detail': ''},
+    ],
     resumeFileName: fileName,
   );
 }

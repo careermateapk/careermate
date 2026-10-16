@@ -21,10 +21,13 @@ class AtsIssue {
 }
 
 class AtsReport {
-  const AtsReport(this.total, this.parts, this.issues);
+  const AtsReport(this.total, this.parts, this.issues, [this.found = const []]);
   final int total;
   final List<AtsPart> parts;
   final List<AtsIssue> issues;
+
+  /// Good things already in the CV, shown as "Already in your CV".
+  final List<String> found;
 }
 
 /// A transparent, rule-based CV readiness estimate. It is not the score of
@@ -153,8 +156,13 @@ class AtsScorer {
     // Parsing compatibility
     final odd = RegExp(r'[^\x00-\x7F₹•●▪◦–—’‘“”…]').allMatches(cv.text).length;
     final ratio = cv.text.isEmpty ? 1 : odd / cv.text.length;
-    final pc = ratio > 0.05 ? 5 : 10;
-    if (ratio > 0.05) {
+    var pc = ratio > 0.05 ? 5 : 10;
+    if (cv.usedOcr) {
+      pc = 4;
+      issues.add(const AtsIssue(Severity.high, 'Make important text real text',
+          'Parts of your CV (like name, contact details or headings) are pictures, so many company systems cannot read them. '
+          'We read them with a text scan on your phone. Save the CV again straight from Word or Google Docs as PDF, without image converters.'));
+    } else if (ratio > 0.05) {
       issues.add(const AtsIssue(Severity.medium, 'Some text may not be readable by hiring systems',
           'Fancy fonts, icons or text inside images can confuse systems. Use a simple one-column layout with standard fonts.'));
     }
@@ -162,7 +170,17 @@ class AtsScorer {
 
     final total = parts.fold<int>(0, (s, p) => s + p.score);
     issues.sort((a, b) => a.severity.index.compareTo(b.severity.index));
-    return AtsReport(total.clamp(0, 100).toInt(), parts, issues);
+    final found = <String>[
+      if (cv.email.isNotEmpty) 'Email · ${cv.email}',
+      if (cv.phone.isNotEmpty) 'Mobile · ${cv.phone}',
+      if (cv.location.isNotEmpty) 'City · ${cv.location}',
+      if (cv.sections.keys.any((k) => k != 'personal'))
+        'Headings · ${cv.sections.keys.where((k) => k != 'personal').map((k) => k[0].toUpperCase() + k.substring(1)).join(', ')}',
+      if (quantified > 0) 'Results with numbers · $quantified line${quantified == 1 ? '' : 's'}',
+      if (cv.dateRanges.isNotEmpty) 'Dates on your jobs · ${cv.dateRanges.length} found',
+      if (n > 0) 'Skills recognised · $n',
+    ];
+    return AtsReport(total.clamp(0, 100).toInt(), parts, issues, found);
   }
 
   static String _stripEnd(String s) => s.trim().replaceFirst(RegExp(r'[.;,]+$'), '');

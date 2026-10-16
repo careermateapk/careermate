@@ -41,6 +41,9 @@ dependencies:
   flutter_local_notifications: ^19.4.0
   workmanager: ^0.10.10
 
+  # Reads text that is inside pictures in a CV (free, on the phone)
+  google_mlkit_text_recognition: ^0.15.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

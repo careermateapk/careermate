@@ -15,7 +15,7 @@ service cloud.firestore {
     function isVerifiedRecruiter() {
       return signedIn()
         && request.auth.token.email_verified == true
-        && !request.auth.token.email.matches('.*@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)[.].*')
+        && (request.auth.token.email == 'ksuraj.th@gmail.com' || !request.auth.token.email.matches('.*@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)[.].*'))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter';
     }
     function jobOwner(jobId) {

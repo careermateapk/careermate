@@ -126,7 +126,11 @@ class _CvScanScreenState extends State<CvScanScreen> with TickerProviderStateMix
                 Expanded(
                   child: LayoutBuilder(builder: (context, c) {
                     final center = Offset(c.maxWidth / 2, c.maxHeight / 2);
-                    return Stack(clipBehavior: Clip.none, children: [
+                    // Fixed size so the scan always sits in the middle of the screen.
+                    return SizedBox(
+                      width: c.maxWidth,
+                      height: c.maxHeight,
+                      child: Stack(clipBehavior: Clip.none, children: [
                       Positioned.fill(child: CustomPaint(painter: _OrbitPainter(_loop.value, t, center))),
                       Positioned(
                         left: center.dx - 95,
@@ -134,7 +138,8 @@ class _CvScanScreenState extends State<CvScanScreen> with TickerProviderStateMix
                         child: _CvCard(scan: _loop.value, t: t),
                       ),
                       for (var i = 0; i < _chips.length; i++) _chip(i, center, t, c.maxWidth),
-                    ]);
+                    ]),
+                    );
                   }),
                 ),
                 _bottom(pct, stepNow),

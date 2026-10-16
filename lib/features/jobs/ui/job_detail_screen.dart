@@ -256,11 +256,19 @@ class _Authenticity extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 8),
-          Expanded(child: Text('Authenticity check', style: AppTheme.display(context, size: 15))),
-          StatusChip(label, tone: tone),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(11)),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('Authenticity check', maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: AppTheme.display(context, size: 16)),
+          ),
         ]),
+        const SizedBox(height: 10),
+        StatusChip(label, tone: tone),
         const SizedBox(height: 10),
         if (job.isCareerMate)
           const _Line(icon: Icons.check_rounded, color: AppColors.green, text: 'Posted on CareerMate by a recruiter whose company email is verified.')

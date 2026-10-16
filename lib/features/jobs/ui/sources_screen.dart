@@ -84,12 +84,6 @@ class SourcesScreen extends ConsumerWidget {
                 ]),
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Only sources that let apps use their jobs for free are included, and each job links back to where it came from. '
-              'LinkedIn, Naukri, Indeed and others open through the “Search other sites” button on every job.',
-              style: TextStyle(fontSize: 11.5, color: AppColors.textMuted, height: 1.45),
-            ),
           ]);
         },
       ),

@@ -53,7 +53,11 @@ const freeEmailDomains = {
   'protonmail.com', 'zoho.com', 'zohomail.in', 'gmx.com', 'mail.com', 'yandex.com', 'tutanota.com',
 };
 
+/// Personal emails allowed to act as recruiters, only for testing the app.
+const testRecruiterEmails = {'ksuraj.th@gmail.com'};
+
 bool isCompanyEmail(String email) {
+  if (testRecruiterEmails.contains(email.trim().toLowerCase())) return true;
   final at = email.trim().toLowerCase().split('@');
   return at.length == 2 && at[1].contains('.') && !freeEmailDomains.contains(at[1]);
 }
