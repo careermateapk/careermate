@@ -79,4 +79,31 @@ Education
     expect(d.jobs.first.bullets.length, 2);
     expect(d.summary, contains('8 years'));
   });
+
+  test('private-use bullets and OCR job titles', () {
+    const text = 'Manager - Accounts Receivable, Easy Shipping India Private Limited, New Delhi\n'
+        'Sr. Accounts & Finance Executive, HV freight private Limited, New Delhi\n'
+        'B.COM (HONS), School of Open Learning, Delhi university, New Delhi\n'
+        '<<<pdf-text>>>\n'
+        'Dynamic Accounts Executive with over 8 years of experience.\n'
+        '10/2025 - Present\n'
+        ' Managed end-to-end operations, including\n'
+        'invoice processing.\n'
+        ' Supervised and led a team of 4 members.\n'
+        '07/2024 - 10 /2025\n'
+        ' Worked as AR professional.\n'
+        'with accuracy\n';
+    final d = ResumeData();
+    ResumeData.importForTest(d, text);
+    expect(d.jobs.length, 2);
+    expect(d.jobs[0].bullets.length, 2);
+    expect(d.jobs[0].role, 'Manager - Accounts Receivable');
+    expect(d.jobs[0].company, 'Easy Shipping India Private Limited');
+    expect(d.jobs[1].role, 'Sr. Accounts & Finance Executive');
+  });
+
+  test('PDF text has no unsupported dash symbols', () {
+    expect(clean('10/2025 – Present'), '10/2025 - Present');
+    expect(clean('Manager — AP '), 'Manager - AP ');
+  });
 }

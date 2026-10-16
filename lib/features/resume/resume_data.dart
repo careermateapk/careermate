@@ -158,7 +158,8 @@ class ResumeData {
     final dateRe = RegExp(
         r'^((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}|\d{1,2}[/.-]\d{4}|\d{4})\s*(?:-|–|—|to)\s*(present|current|till date|now|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{4}|\d{1,2}[/.-]\d{4}|\d{4})$',
         caseSensitive: false);
-    final bulletRe = RegExp(r'^[•●▪◦\-–*➢➤►✓]\s*');
+    // Word bullets often arrive as private-use symbols (e.g. U+F0B7) — treat them as bullets too.
+    final bulletRe = RegExp(r'^[•●▪◦\-–*➢➤►✓\uF000-\uF8FF§]\s*');
     String section = '';
     final summary = <String>[];
     ResumeJob? cur;
@@ -178,7 +179,12 @@ class ResumeData {
       final m = dateRe.firstMatch(l);
       if (m != null && section != 'education' && section != 'projects') {
         final prev = i > 0 ? lines[i - 1] : '';
-        final looksRole = prev.length < 100 && !bulletRe.hasMatch(prev) && !prev.endsWith('.') && dateRe.firstMatch(prev) == null;
+        final looksRole = prev.length < 100 &&
+            !bulletRe.hasMatch(prev) &&
+            !prev.endsWith('.') &&
+            dateRe.firstMatch(prev) == null &&
+            RegExp(r'^[A-Z0-9]').hasMatch(prev) &&
+            (prev.contains(',') || prev.contains(' at ') || prev.contains(' - ') || prev.split(' ').length <= 6);
         final parts = looksRole ? prev.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() : <String>[];
         if (looksRole) {
           // The role line was taken as summary text or as the end of the previous job's point: undo that.
@@ -206,6 +212,29 @@ class ResumeData {
         } else if (l.length < 140 && !dateRe.hasMatch(l)) {
           cur.bullets[cur.bullets.length - 1] = '${cur.bullets.last} $l';
         }
+      }
+    }
+    // Job titles that were pictures in the PDF come from the OCR text, in the same order as the jobs.
+    if (text.contains(CvParser.textLayerMarker)) {
+      final ocr = text.split(CvParser.textLayerMarker).first.split('\n').map((l) => l.replaceAll(RegExp(r'\s+'), ' ').trim());
+      final roleLines = ocr.where((l) {
+        if (l.length < 12 || l.length > 140 || !l.contains(',')) return false;
+        final low = l.toLowerCase();
+        if (RegExp(r'university|college|institute|school|b\.?com|m\.?com|mba|bachelor|master|class|@|\d{4}').hasMatch(low)) return false;
+        return RegExp(r'pvt|private|limited|ltd|llp|& co|associates|solutions|services|technologies|india|group|company|corp|inc\b').hasMatch(low) ||
+            CvParser.cities.any((c) => low.endsWith(c));
+      }).toList();
+      var k = 0;
+      for (final j in d.jobs) {
+        if (k >= roleLines.length) break;
+        if (j.role.isNotEmpty) {
+          k++;
+          continue;
+        }
+        final parts = roleLines[k++].split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        j.role = parts.first.replaceAll(RegExp(r'\s*[-–]\s*$'), '');
+        if (parts.length > 1) j.company = parts[1];
+        if (parts.length > 2) j.city = parts.sublist(2).join(', ');
       }
     }
     if (summary.isNotEmpty) d.summary = summary.join(' ');

@@ -49,6 +49,20 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
 
   Future<void> _run() async {
     final text = _input.text.trim();
+    final onlyLink = RegExp(r'^\S*https?://\S+$').hasMatch(text) || (text.length < 80 && text.contains('lnkd.in'));
+    if (onlyLink) {
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Only a link was shared'),
+          content: const Text(
+              'LinkedIn shares just a link, and its posts need a login, so CareerMate can’t read them.\n\n'
+              'In LinkedIn: open the post → press and hold the text → Copy. Then come back and paste it here.'),
+          actions: [FilledButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
+        ),
+      );
+      return;
+    }
     if (text.length < 40) {
       showMessage(context, 'Paste the full job post text.', error: true);
       return;

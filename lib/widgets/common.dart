@@ -212,7 +212,7 @@ void showMessage(BuildContext context, String text, {bool error = false}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
-      content: Text(text),
-      backgroundColor: error ? AppColors.red : AppColors.navy,
+      content: Text(text, style: error ? const TextStyle(color: Colors.white, fontWeight: FontWeight.w700) : null),
+      backgroundColor: error ? AppColors.red : null,
     ));
 }

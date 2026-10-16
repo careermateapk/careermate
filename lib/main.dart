@@ -36,6 +36,28 @@ Future<void> main() async {
     );
   }
 
+  // Instead of a blank grey screen, show what went wrong (helps us fix it from a screenshot).
+  ErrorWidget.builder = (details) => Material(
+        color: const Color(0xFF0B1328),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFFFBBF24), size: 40),
+              const SizedBox(height: 12),
+              const Text('Something went wrong on this screen',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              const Text('Go back and try again. If it happens again, send a screenshot of this message.',
+                  style: TextStyle(color: Color(0xFFC9D3EA), fontSize: 13.5)),
+              const SizedBox(height: 12),
+              Text(details.exceptionAsString(),
+                  maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8A96B8), fontSize: 11.5)),
+            ]),
+          ),
+        ),
+      );
+
   final prefs = await SharedPreferencesWithCache.create(
     cacheOptions: const SharedPreferencesWithCacheOptions(allowList: PrefKeys.all),
   );

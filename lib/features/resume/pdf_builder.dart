@@ -8,11 +8,13 @@ import 'templates.dart';
 
 /// Built-in PDF fonts only cover basic Latin, so replace a few symbols.
 String clean(String s) => s
+    .replaceAll(RegExp('[–—‒−]'), '-')
+    .replaceAll('•', '-')
     .replaceAll('₹', 'Rs. ')
     .replaceAll(RegExp('[“”]'), '"')
     .replaceAll(RegExp('[‘’]'), "'")
     .replaceAll('…', '...')
-    .replaceAll(RegExp(r'[^\x00-\xFF–—•]'), '');
+    .replaceAll(RegExp(r'[^\x20-\x7E\xA0-\xFF\n]'), '');
 
 class ResumePdf {
   ResumePdf(this.d, this.t, {int? color}) : accent = PdfColor.fromInt(color ?? d.color);

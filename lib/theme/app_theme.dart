@@ -85,7 +85,11 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.navy,
+        backgroundColor: isDark ? const Color(0xFFF1F5FF) : AppColors.navy,
+        contentTextStyle: GoogleFonts.getFont('Manrope',
+            fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? AppColors.navy : Colors.white),
+        actionTextColor: isDark ? AppColors.blue : const Color(0xFF9DBBFF),
+        actionBackgroundColor: isDark ? AppColors.blue.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
       ),
       dividerTheme: DividerThemeData(color: isDark ? AppColors.darkLine : AppColors.line, space: 1),

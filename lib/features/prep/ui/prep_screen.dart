@@ -133,10 +133,16 @@ class _InterviewPrepScreenState extends ConsumerState<InterviewPrepScreen> {
             ),
           ),
         SegmentedButton<int>(
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(
+            selectedBackgroundColor: AppColors.blue,
+            selectedForegroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+          ),
           segments: const [
-            ButtonSegment(value: 0, label: Text('Practice'), icon: Icon(Icons.mic_none_rounded)),
-            ButtonSegment(value: 1, label: Text('Questions'), icon: Icon(Icons.list_alt_rounded)),
-            ButtonSegment(value: 2, label: Text('Tips'), icon: Icon(Icons.checklist_rounded)),
+            ButtonSegment(value: 0, label: FittedBox(child: Text('Practice', maxLines: 1, style: TextStyle(fontWeight: FontWeight.w800)))),
+            ButtonSegment(value: 1, label: FittedBox(child: Text('Questions', maxLines: 1, style: TextStyle(fontWeight: FontWeight.w800)))),
+            ButtonSegment(value: 2, label: FittedBox(child: Text('Tips', maxLines: 1, style: TextStyle(fontWeight: FontWeight.w800)))),
           ],
           selected: {_tab},
           onSelectionChanged: (s) => setState(() => _tab = s.first),

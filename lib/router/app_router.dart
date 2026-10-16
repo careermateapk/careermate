@@ -129,7 +129,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.emailRecruiter,
         redirect: (_, state) => state.extra is EmailDraftArgs ? null : Routes.jobs,
-        builder: (_, state) => EmailComposeScreen(args: state.extra! as EmailDraftArgs),
+        builder: (_, state) => state.extra is EmailDraftArgs ? EmailComposeScreen(args: state.extra! as EmailDraftArgs) : const JobsScreen(),
       ),
       GoRoute(path: Routes.recruiterHome, builder: (_, _) => const RecruiterHomeScreen()),
       GoRoute(
@@ -139,12 +139,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.recruiterApplicants,
         redirect: (_, state) => state.extra is PostedJob ? null : Routes.recruiterHome,
-        builder: (_, state) => ApplicantsScreen(job: state.extra! as PostedJob),
+        builder: (_, state) =>
+            state.extra is PostedJob ? ApplicantsScreen(job: state.extra! as PostedJob) : const RecruiterHomeScreen(),
       ),
       GoRoute(
         path: Routes.jobDetail,
         redirect: (_, state) => state.extra is JobMatch ? null : Routes.jobs,
-        builder: (_, state) => JobDetailScreen(match: state.extra! as JobMatch),
+        builder: (_, state) => state.extra is JobMatch ? JobDetailScreen(match: state.extra! as JobMatch) : const JobsScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),

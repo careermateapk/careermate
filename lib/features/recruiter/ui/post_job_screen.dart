@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -147,8 +148,14 @@ class _PostJobScreenState extends ConsumerState<PostJobScreen> {
     );
     setState(() => _saving = true);
     try {
-      await user.getIdToken(true); // make sure a recent email verification is included
-      await ref.read(recruiterRepositoryProvider).save(job);
+      try {
+        await ref.read(recruiterRepositoryProvider).save(job);
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+        // A just-verified email may not be in the sign-in token yet: refresh it once and retry.
+        await user.getIdToken(true);
+        await ref.read(recruiterRepositoryProvider).save(job);
+      }
       if (!mounted) return;
       showMessage(context, publish ? 'Job published. Matching job seekers can see it now.' : 'Draft saved.');
       context.pop();
