@@ -39,7 +39,7 @@ class ResumeNotifier extends AsyncNotifier<ResumeData> {
     return ResumeData.fromProfile(profile, cvText: text);
   }
 
-  Future<void> update(void Function(ResumeData d) change) async {
+  Future<void> edit(void Function(ResumeData d) change) async {
     final d = state.value;
     if (d == null) return;
     change(d);
@@ -229,7 +229,7 @@ class _TemplatePreviewState extends ConsumerState<_TemplatePreview> {
                   onPressed: data == null
                       ? null
                       : () async {
-                          await ref.read(resumeProvider.notifier).update((d) {
+                          await ref.read(resumeProvider.notifier).edit((d) {
                             d.templateId = t.id;
                             d.color = _color;
                           });
@@ -276,7 +276,7 @@ class _ResumeEditorScreenState extends ConsumerState<ResumeEditorScreen> {
   static const _steps = ['Contact', 'Summary', 'Experience', 'Education', 'Skills', 'Extras'];
   int _step = 0;
 
-  void _set(void Function(ResumeData d) f) => ref.read(resumeProvider.notifier).update(f);
+  void _set(void Function(ResumeData d) f) => ref.read(resumeProvider.notifier).edit(f);
 
   @override
   Widget build(BuildContext context) {
