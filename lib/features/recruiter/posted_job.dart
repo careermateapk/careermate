@@ -140,6 +140,7 @@ class Application {
     required this.status,
     required this.cvEmailed,
     this.appliedAt,
+    this.viewedAt,
   });
 
   final String seekerUid;
@@ -156,6 +157,7 @@ class Application {
   /// new | shortlisted | interview | rejected
   final String status;
   final bool cvEmailed;
+  final DateTime? viewedAt;
   final DateTime? appliedAt;
 
   factory Application.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
@@ -174,6 +176,7 @@ class Application {
       status: m['status'] as String? ?? 'new',
       cvEmailed: m['cvEmailed'] as bool? ?? false,
       appliedAt: (m['appliedAt'] as Timestamp?)?.toDate(),
+      viewedAt: (m['viewedAt'] as Timestamp?)?.toDate(),
     );
   }
 }
@@ -236,6 +239,13 @@ class RecruiterRepository {
       .collection('applications')
       .doc(seekerUid)
       .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
+
+  /// Records the first time the recruiter opens an application, so the candidate is told "HR viewed".
+  Future<void> markViewed(String jobId, String seekerUid) => _jobs
+      .doc(jobId)
+      .collection('applications')
+      .doc(seekerUid)
+      .update({'viewedAt': FieldValue.serverTimestamp()});
 
   /// Live CareerMate jobs in any of [subIds] (max 10, Firestore limit).
   Future<List<PostedJob>> liveJobsFor(List<String> subIds) async {

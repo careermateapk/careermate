@@ -10,6 +10,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../auth/auth_repository.dart';
 import '../../cv/cv_repository.dart';
+import '../../notifications/notification_service.dart';
 import '../../profile/profile_repository.dart';
 import '../../profile/taxonomy.dart';
 
@@ -114,6 +115,22 @@ class _Header extends StatelessWidget {
           Text(name, style: AppTheme.display(context, size: 19)),
         ]),
       ),
+      ValueListenableBuilder<int>(
+        valueListenable: NotificationService.instance.changes,
+        builder: (context, _, _) => FutureBuilder<int>(
+          future: NotificationService.instance.unreadCount(),
+          builder: (context, snap) => IconButton.filledTonal(
+            tooltip: 'Notifications',
+            onPressed: () => context.push(Routes.notifications),
+            icon: Badge(
+              isLabelVisible: (snap.data ?? 0) > 0,
+              label: Text('${snap.data ?? 0}'),
+              child: const Icon(Icons.notifications_none_rounded),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 6),
       IconButton.filledTonal(
         tooltip: 'Settings',
         onPressed: () => context.push(Routes.settings),

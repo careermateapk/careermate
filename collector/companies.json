@@ -1,5 +1,5 @@
 {
- "_note": "Company hiring boards to read. Each entry is the company's board name on that system. Boards that return nothing are reported in the run summary and can be removed. Add more freely.",
+ "_note": "Company hiring boards to read. Each entry is the company's board name on that system. Boards that return nothing are reported in the run summary and can be removed. Add more freely. Recruitee/Breezy/Personio/Teamtailor are supported: add a company's board name to their list when you know an Indian company that uses them.",
  "greenhouse": [
   "agoda",
   "appdirect",
@@ -109,58 +109,13 @@
   "billing executive",
   "mis executive"
  ],
- "recruitee": [
-  "hotjar",
-  "bluestacks",
-  "airmeet",
-  "mindtickle",
-  "peoplestrong",
-  "sprinto",
-  "zenduty",
-  "toddle",
-  "pazcare",
-  "eatfit"
- ],
- "breezy": [
-  "wingify",
-  "juspay",
-  "signeasy",
-  "kapturecx",
-  "exotel",
-  "leena-ai",
-  "vymo",
-  "haptik",
-  "nference",
-  "truefoundry"
- ],
- "personio": [
-  "celonis",
-  "n26",
-  "contentful",
-  "sumup",
-  "doctolib",
-  "personio",
-  "scalable-capital",
-  "egym",
-  "freeletics",
-  "sennder"
- ],
- "teamtailor": [
-  "truecaller",
-  "pleo",
-  "voi",
-  "kry",
-  "klarna",
-  "mentimeter",
-  "epidemic-sound",
-  "tibber",
-  "sinch",
-  "tink"
- ],
+ "recruitee": [],
+ "breezy": [],
+ "personio": [],
+ "teamtailor": [],
  "jobicy_geos": [
   "apac",
-  "anywhere",
-  "india"
+  "anywhere"
  ],
- "arbeitnow_pages": 3
+ "arbeitnow_pages": 1
 }

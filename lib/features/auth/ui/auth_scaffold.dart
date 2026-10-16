@@ -81,10 +81,14 @@ class AuthScaffold extends StatelessWidget {
 
 /// "Continue with Google" button.
 class GoogleButton extends ConsumerStatefulWidget {
-  const GoogleButton({super.key, this.allowNewAccount = true});
+  const GoogleButton({super.key, this.allowNewAccount = true, this.enabled = true, this.onBlocked});
 
   /// False on the login page: new Google emails must register first.
   final bool allowNewAccount;
+
+  /// False until the sign-up consent box is ticked. Tapping then calls [onBlocked] instead of signing in.
+  final bool enabled;
+  final VoidCallback? onBlocked;
 
   @override
   ConsumerState<GoogleButton> createState() => _GoogleButtonState();
@@ -112,8 +116,15 @@ class _GoogleButtonState extends ConsumerState<GoogleButton> {
 
   @override
   Widget build(BuildContext context) {
+    final locked = !widget.enabled;
     return OutlinedButton(
-      onPressed: _busy ? null : _go,
+      onPressed: _busy ? null : (locked ? widget.onBlocked : _go),
+      style: locked
+          ? OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFA0A8BA),
+              backgroundColor: const Color(0x0F8A93A8),
+            )
+          : null,
       child: _busy
           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6))
           : Row(mainAxisSize: MainAxisSize.min, children: [
@@ -122,10 +133,10 @@ class _GoogleButtonState extends ConsumerState<GoogleButton> {
                 height: 22,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.border)),
-                child: const Text('G', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.blue, fontSize: 13)),
+                child: Text('G', style: TextStyle(fontWeight: FontWeight.w900, color: locked ? const Color(0xFFA0A8BA) : AppColors.blue, fontSize: 13)),
               ),
               const SizedBox(width: 10),
-              const Text('Continue with Google'),
+              Flexible(child: Text(locked ? 'Continue with Google (tick the box first)' : 'Continue with Google', overflow: TextOverflow.ellipsis)),
             ]),
     );
   }

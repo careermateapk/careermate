@@ -11,6 +11,7 @@ import '../../outreach/ui/email_compose_screen.dart';
 import '../../profile/cv_parser.dart';
 import '../../recruiter/posted_job.dart';
 import '../job_models.dart';
+import 'other_sites.dart';
 import 'jobs_screen.dart' show postedText;
 
 class JobDetailScreen extends StatelessWidget {
@@ -133,6 +134,30 @@ class JobDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  FadeSlideIn(
+                    index: 4,
+                    child: AppCard(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Find more like this on other sites', style: AppTheme.display(context, size: 15)),
+                        const SizedBox(height: 4),
+                        Text('Opens LinkedIn, Naukri, Indeed and more with “${searchRole(j.title)}” already searched.',
+                            style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+                        const SizedBox(height: 10),
+                        SizedBox(width: double.infinity, child: OtherSitesButton(job: j)),
+                      ]),
+                    ),
+                  ),
+                  if (j.source == 'jobicy' || j.source == 'arbeitnow') ...[
+                    const SizedBox(height: 14),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => _open(context, j.source == 'jobicy' ? 'https://jobicy.com' : 'https://www.arbeitnow.com'),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        label: Text(j.source == 'jobicy' ? 'Job listing from Jobicy' : 'Job listing from Arbeitnow'),
+                      ),
+                    ),
+                  ],
                   if (j.isAdzuna) ...[
                     const SizedBox(height: 14),
                     Center(
@@ -156,18 +181,22 @@ class JobDetailScreen extends StatelessWidget {
             : Row(children: [
                 Expanded(
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
                     onPressed: () => openEmailComposer(context, match),
                     icon: const Icon(Icons.mail_outline_rounded, size: 18),
-                    label: const Text('Email'),
+                    label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Email HR', maxLines: 1, softWrap: false)),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  flex: 2,
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
                     onPressed: () => _open(context, j.url),
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: Text(j.official ? 'Apply on site' : 'View on ${j.sourceName}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(j.official ? 'Apply on site' : 'View on ${j.sourceName}', maxLines: 1, softWrap: false),
+                    ),
                   ),
                 ),
               ]),

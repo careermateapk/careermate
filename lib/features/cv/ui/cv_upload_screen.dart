@@ -14,6 +14,7 @@ import '../../profile/profile_repository.dart';
 import '../../profile/text_extractor.dart';
 import '../cv_repository.dart';
 import '../local_cv.dart';
+import 'cv_scan_screen.dart';
 
 enum _Phase { idle, reading, uploading, analysing, done }
 
@@ -77,6 +78,8 @@ class _CvUploadScreenState extends ConsumerState<CvUploadScreen> {
       final draft = draftFromText(text,
           fileName: file.name, fallbackEmail: user.email ?? '', fallbackName: user.displayName ?? '');
       ref.read(cvDraftProvider.notifier).set(CvDraft(profile: draft, text: text, fileName: file.name));
+      if (!mounted) return;
+      await CvScanScreen.show(context, profile: draft, fileName: file.name);
       if (!mounted) return;
       setState(() => _phase = _Phase.done);
       context.push(Routes.cvReview);
@@ -297,7 +300,7 @@ class _DropZone extends StatelessWidget {
           const SizedBox(height: 14),
           Text('CV uploaded', style: AppTheme.display(context, size: 19)),
           const SizedBox(height: 4),
-          const Text('Next build step: we will read it and show you the details to confirm.',
+          const Text('Your details were read. Check and confirm them on the next screen.',
               textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 14),
           OutlinedButton(onPressed: onPick, style: OutlinedButton.styleFrom(minimumSize: const Size(200, 48)), child: const Text('Upload a different file')),
@@ -451,7 +454,7 @@ class _WhatHappensNext extends StatelessWidget {
         Text('What happens next', style: AppTheme.display(context, size: 16)),
         const SizedBox(height: 6),
         row(Icons.cloud_done_outlined, 'Secure upload', 'Checked for type, size and password protection', true),
-        row(Icons.auto_awesome_outlined, 'We read your CV', 'Skills, experience, education — coming next', false),
+        row(Icons.auto_awesome_outlined, 'We scan your CV', 'Skills, experience, education and city', true),
         row(Icons.fact_check_outlined, 'You confirm the details', 'Nothing is saved to your profile without your OK', false),
       ]),
     );

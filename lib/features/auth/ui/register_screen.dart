@@ -28,6 +28,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   UserRole _role = UserRole.seeker;
   bool _hide = true;
   bool _agreed = false;
+  bool _nudge = false;
   bool _busy = false;
 
   @override
@@ -45,6 +46,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (!_agreed) {
+      setState(() => _nudge = true);
       showMessage(
           context,
           _role == UserRole.recruiter
@@ -77,6 +79,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  Widget _consent() {
+    final warn = _nudge && !_agreed;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: warn ? const Color(0xFFFFF5F5) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: warn ? const Color(0xFFFCA5A5) : Colors.transparent, width: 1.5),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        CheckboxListTile(
+          value: _agreed,
+          onChanged: (v) => setState(() => _agreed = v ?? false),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          controlAffinity: ListTileControlAffinity.leading,
+          side: warn ? const BorderSide(color: Color(0xFFDC2626), width: 2) : null,
+          title: Text(
+            _role == UserRole.recruiter
+                ? 'I will post only real jobs and never ask candidates for money.'
+                : 'I agree that my CV and profile are stored securely to find jobs for me. I can delete them anytime.',
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
+        if (warn)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 12, 10),
+            child: Row(children: [
+              Icon(Icons.error_outline_rounded, size: 16, color: Color(0xFFB91C1C)),
+              SizedBox(width: 6),
+              Text('Tick the box above to continue',
+                  style: TextStyle(color: Color(0xFFB91C1C), fontWeight: FontWeight.w700, fontSize: 12.5)),
+            ]),
+          ),
+      ]),
+    );
+  }
+
+  void _blocked() {
+    setState(() => _nudge = true);
+    showMessage(context, 'Please tick the agreement box first, then continue with Google.', error: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
@@ -85,8 +130,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       children: [
         RolePicker(value: _role, onChanged: (r) => setState(() => _role = r)),
         const SizedBox(height: 14),
+        _consent(),
         if (_role == UserRole.seeker) ...[
-          const GoogleButton(),
+          GoogleButton(enabled: _agreed, onBlocked: _blocked),
           const OrDivider(),
         ] else
           Container(
@@ -198,19 +244,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
               ],
             ]),
-          ),
-        ),
-        const SizedBox(height: 8),
-        CheckboxListTile(
-          value: _agreed,
-          onChanged: (v) => setState(() => _agreed = v ?? false),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Text(
-            _role == UserRole.recruiter
-                ? 'I will post only real jobs and never ask candidates for money.'
-                : 'I agree that my CV and profile are stored securely to find jobs for me. I can delete them anytime.',
-            style: const TextStyle(fontSize: 13),
           ),
         ),
         const SizedBox(height: 8),

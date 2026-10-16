@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/providers.dart';
+import '../notifications/notification_service.dart';
 
 /// A sign-in problem with a message that is safe to show to the user.
 class AuthFailure implements Exception {
@@ -137,6 +138,10 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    try {
+      await NotificationService.instance.stopBackgroundChecks();
+      await NotificationService.instance.clear();
+    } catch (_) {}
     if (!kIsWeb) {
       try {
         await GoogleSignIn.instance.signOut();

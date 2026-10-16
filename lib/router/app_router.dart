@@ -13,6 +13,8 @@ import '../features/home/ui/coming_soon_screen.dart';
 import '../features/jobs/job_models.dart';
 import '../features/jobs/ui/job_detail_screen.dart';
 import '../features/jobs/ui/jobs_screen.dart';
+import '../features/jobs/ui/sources_screen.dart';
+import '../features/notifications/ui/notifications_screen.dart';
 import '../features/home/ui/dashboard_screen.dart';
 import '../features/home/ui/home_shell.dart';
 import '../features/outreach/ui/email_compose_screen.dart';
@@ -45,6 +47,8 @@ class Routes {
   static const recruiterHome = '/r';
   static const recruiterPost = '/r/post';
   static const recruiterApplicants = '/r/applicants';
+  static const sources = '/sources';
+  static const notifications = '/notifications';
 
   static const _public = {onboarding, login, register, forgot};
 }
@@ -106,6 +110,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.register, builder: (_, _) => const RegisterScreen()),
       GoRoute(path: Routes.forgot, builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsScreen()),
+      GoRoute(path: Routes.sources, builder: (_, _) => const SourcesScreen()),
+      GoRoute(path: Routes.notifications, builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
       GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: Routes.atsReport, builder: (_, _) => const AtsReportScreen()),

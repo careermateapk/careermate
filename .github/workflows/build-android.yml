@@ -51,6 +51,8 @@ jobs:
           grep -q 'android.intent.action.VIEW' android/app/src/main/AndroidManifest.xml
           # Fixed signing key so Google sign-in keeps working (SHA-1 never changes)
           python3 ci/patch_signing.py
+          # Notifications: desugaring + Android 13 permission
+          python3 ci/patch_android.py
 
       - name: Connect Firebase
         run: |

@@ -9,9 +9,9 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../cv/local_cv.dart';
 import '../../jobs/job_models.dart';
-import '../../profile/cv_parser.dart';
 import '../../profile/profile_repository.dart';
 import '../../recruiter/posted_job.dart';
+import '../email_drafts.dart';
 import '../email_service.dart';
 
 class EmailDraftArgs {
@@ -34,6 +34,11 @@ class _EmailComposeScreenState extends ConsumerState<EmailComposeScreen> {
   late final TextEditingController _to, _subject, _body;
   bool _attach = true;
   bool _busy = false;
+  late final DraftWriter _writer;
+  late DraftStyle _style;
+  int _variant = 0;
+  String _lastBody = '';
+  final _bodyFocus = FocusNode();
 
   JobItem get _job => widget.args.match.job;
 
@@ -41,9 +46,39 @@ class _EmailComposeScreenState extends ConsumerState<EmailComposeScreen> {
   void initState() {
     super.initState();
     final p = ref.read(profileProvider).value ?? CareerProfile();
+    _writer = DraftWriter(match: widget.args.match, profile: p);
+    _style = p.isFresher ? DraftStyle.fresher : DraftStyle.professional;
+    final d = _writer.write(_style, 0);
     _to = TextEditingController(text: _job.contactEmail);
-    _subject = TextEditingController(text: '${_job.title} role — ${p.name.isEmpty ? 'application' : p.name}');
-    _body = TextEditingController(text: _draft(p));
+    _subject = TextEditingController(text: d.subject);
+    _body = TextEditingController(text: d.body);
+    _lastBody = d.body;
+  }
+
+  Future<void> _useDraft(DraftStyle style, int variant) async {
+    final edited = _body.text.trim() != _lastBody.trim();
+    if (edited) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Replace your edits?'),
+          content: const Text('You changed this email. A new draft will replace your changes.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep mine')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Replace')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    final d = _writer.write(style, variant);
+    setState(() {
+      _style = style;
+      _variant = variant;
+      _subject.text = d.subject;
+      _body.text = d.body;
+      _lastBody = d.body;
+    });
   }
 
   @override
@@ -51,28 +86,10 @@ class _EmailComposeScreenState extends ConsumerState<EmailComposeScreen> {
     _to.dispose();
     _subject.dispose();
     _body.dispose();
+    _bodyFocus.dispose();
     super.dispose();
   }
 
-  /// Uses only facts from the confirmed profile — nothing invented.
-  String _draft(CareerProfile p) {
-    final matched = widget.args.match.matchedSkills.take(3).map(CvParser.prettySkill).toList();
-    final skills = matched.isNotEmpty ? matched : p.skills.take(3).map(CvParser.prettySkill).toList();
-    final where = _job.isCareerMate ? 'on CareerMate' : (_job.official ? 'on your careers page' : 'online');
-    final exp = p.experienceYears >= 1
-        ? 'I have ${p.experienceYears % 1 == 0 ? p.experienceYears.toInt() : p.experienceYears} years of experience'
-        : 'I am a fresher';
-    final skillText = skills.isEmpty ? '' : ' with skills in ${_join(skills)}';
-    final edu = p.education.isEmpty ? '' : ' I hold a ${p.education.first}.';
-    final sign = [p.name, p.phone, p.location].where((s) => s.trim().isNotEmpty).join('\n');
-    return 'Dear Hiring Team,\n\n'
-        'I saw the ${_job.title} opening at ${_job.company.isEmpty ? 'your company' : _job.company} $where. '
-        '$exp$skillText.$edu\n\n'
-        'My CV is attached. I would welcome a short call to discuss the role.\n\n'
-        'Thank you,\n$sign';
-  }
-
-  static String _join(List<String> s) => s.length <= 1 ? s.join() : '${s.sublist(0, s.length - 1).join(', ')} and ${s.last}';
 
   Future<void> _send() async {
     final to = _to.text.trim();
@@ -160,6 +177,50 @@ class _EmailComposeScreenState extends ConsumerState<EmailComposeScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 140),
             children: [
+              const Text('CHOOSE A STYLE',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: .5, color: AppColors.textMuted)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final st in DraftStyle.values)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(st.label),
+                          selected: _style == st,
+                          onSelected: (_) => _style == st ? null : _useDraft(st, 0),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.blueTint,
+                      foregroundColor: AppColors.blueDark,
+                      side: const BorderSide(color: Color(0xFFC7D7FF), width: 1.5),
+                    ),
+                    onPressed: () => _useDraft(_style, _variant + 1),
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                    label: const FittedBox(fit: BoxFit.scaleDown, child: Text('New version', maxLines: 1)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _bodyFocus.requestFocus(),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Edit myself', maxLines: 1)),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
               FadeSlideIn(
                 child: AppCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -180,12 +241,12 @@ class _EmailComposeScreenState extends ConsumerState<EmailComposeScreen> {
                       const Icon(Icons.auto_awesome_outlined, size: 16, color: AppColors.blueDark),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text('Written from your confirmed CV — edit anything',
+                        child: Text('${_style.label} · version ${_variant % 3 + 1} of 3 · only facts from your CV',
                             style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF8FB0FF) : AppColors.blueDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
                       ),
                     ]),
                     const SizedBox(height: 8),
-                    TextField(controller: _body, minLines: 8, maxLines: 18, decoration: const InputDecoration(alignLabelWithHint: true)),
+                    TextField(controller: _body, focusNode: _bodyFocus, minLines: 8, maxLines: 18, decoration: const InputDecoration(alignLabelWithHint: true)),
                   ]),
                 ),
               ),

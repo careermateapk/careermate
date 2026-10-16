@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'config/app_config.dart';
 import 'core/providers.dart';
+import 'features/notifications/notification_service.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -20,6 +21,11 @@ Future<void> main() async {
     runApp(SetupErrorApp(message: e.toString()));
     return;
   }
+
+  // On-phone notifications (no server). Permission is asked after a job seeker signs in.
+  try {
+    await NotificationService.instance.init(requestPermission: false);
+  } catch (_) {}
 
   // Needed before reading PDFs with the document API (CV text extraction).
   pdfrxFlutterInitialize();

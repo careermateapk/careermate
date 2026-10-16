@@ -237,6 +237,12 @@ class _ApplicantCard extends StatelessWidget {
   static final ButtonStyle _small = OutlinedButton.styleFrom(minimumSize: const Size(0, 42), padding: EdgeInsets.zero);
 
   void _showDetails(BuildContext context) {
+    if (app.viewedAt == null) {
+      ProviderScope.containerOf(context, listen: false)
+          .read(recruiterRepositoryProvider)
+          .markViewed(job.id, app.seekerUid)
+          .catchError((_) {});
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

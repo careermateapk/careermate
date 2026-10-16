@@ -8,6 +8,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../profile/profile_repository.dart';
 import '../job_models.dart';
+import 'other_sites.dart';
 
 enum _Filter { all, remote, myCity, fresher, official }
 
@@ -35,7 +36,13 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     final jobsAsync = ref.watch(jobsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Find jobs')),
+      appBar: AppBar(title: const Text('Find jobs'), actions: [
+        IconButton(
+          tooltip: 'Where jobs come from',
+          icon: const Icon(Icons.hub_outlined),
+          onPressed: () => context.push(Routes.sources),
+        ),
+      ]),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -220,6 +227,23 @@ class _JobCard extends StatelessWidget {
         ]),
         const SizedBox(height: 8),
         Text(postedText(j), style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+        const SizedBox(height: 10),
+        Row(children: [
+          SizedBox(
+            width: 92,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => context.push(Routes.jobDetail, extra: match),
+              child: const Text('View job', maxLines: 1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: OtherSitesButton(job: j)),
+        ]),
       ]),
     );
   }

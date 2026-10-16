@@ -3,14 +3,73 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'config/app_config.dart';
 import 'core/providers.dart';
+import 'features/notifications/notification_service.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
-class CareerMateApp extends ConsumerWidget {
+class CareerMateApp extends ConsumerStatefulWidget {
   const CareerMateApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CareerMateApp> createState() => _CareerMateAppState();
+}
+
+class _CareerMateAppState extends ConsumerState<CareerMateApp> with WidgetsBindingObserver {
+  final _notif = NotificationService.instance;
+  String? _startedFor;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _notif.pendingRoute.addListener(_openPending);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notif.pendingRoute.removeListener(_openPending);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _startedFor != null) {
+      _notif.checkNow().catchError((_) {});
+    }
+  }
+
+  void _openPending() {
+    final route = _notif.pendingRoute.value;
+    if (route == null || _startedFor == null) return;
+    _notif.pendingRoute.value = null;
+    final router = ref.read(routerProvider);
+    route == '/jobs' ? router.go(route) : router.push(route);
+  }
+
+  /// Starts notifications once a job seeker is signed in.
+  Future<void> _start(String uid) async {
+    if (_startedFor == uid) return;
+    _startedFor = uid;
+    try {
+      await _notif.init();
+      await _notif.startBackgroundChecks();
+      await _notif.checkNow();
+    } catch (_) {}
+    _openPending();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(userDocProvider, (_, next) {
+      final uid = ref.read(authStateProvider).value?.uid;
+      final doc = next.value;
+      if (uid == null || doc == null) {
+        _startedFor = null;
+        return;
+      }
+      if (roleFrom(doc['role']) == UserRole.seeker) _start(uid);
+    });
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,

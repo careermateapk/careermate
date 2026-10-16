@@ -37,6 +37,10 @@ dependencies:
   flutter_email_sender: ^11.2.0
   path_provider: ^2.1.6
 
+  # Free on-phone notifications with background checks (no server)
+  flutter_local_notifications: ^19.4.0
+  workmanager: ^0.9.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
