@@ -89,7 +89,7 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
   }
 
   Future<void> _run() async {
-    final text = _input.text.trim();
+    var text = _input.text.trim();
     final link = RegExp(r'https?://\S+').firstMatch(text)?.group(0);
     final onlyLink = link != null && text.replaceAll(link, '').trim().length < 40;
     if (onlyLink) {
@@ -99,6 +99,7 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
       setState(() => _reading = false);
       if (fetched.replaceAll(link, '').trim().length >= 60) {
         _input.text = fetched;
+        text = fetched;
       } else {
         final pick = await showDialog<bool>(
           context: context,
