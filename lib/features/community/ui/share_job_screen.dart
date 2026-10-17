@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,11 +13,15 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../profile/taxonomy.dart';
 import '../job_post.dart';
+import '../post_reader.dart';
 
 /// A job post shared from LinkedIn/WhatsApp (or pasted): read it, check it, then add it for everyone.
 class ShareJobScreen extends ConsumerStatefulWidget {
-  const ShareJobScreen({super.key, this.text = ''});
+  const ShareJobScreen({super.key, this.text = '', this.imagePath});
   final String text;
+
+  /// A screenshot shared into the app (read with OCR).
+  final String? imagePath;
 
   @override
   ConsumerState<ShareJobScreen> createState() => _ShareJobScreenState();
@@ -31,7 +39,11 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.text.trim().isNotEmpty) WidgetsBinding.instance.addPostFrameCallback((_) => _run());
+    if (widget.imagePath != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _readImage(widget.imagePath!));
+    } else if (widget.text.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _run());
+    }
   }
 
   @override
@@ -42,6 +54,35 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
     super.dispose();
   }
 
+  bool _reading = false;
+
+  Future<void> _readImage(String path) async {
+    setState(() => _reading = true);
+    try {
+      final text = await PostReader.fromImage(path);
+      if (!mounted) return;
+      if (text.trim().length < 40) {
+        showMessage(context, 'Couldn’t read enough text in that picture. Try a clearer screenshot of the post.', error: true);
+        return;
+      }
+      _input.text = text;
+      await _run();
+    } catch (_) {
+      if (mounted) showMessage(context, 'Couldn’t read that picture.', error: true);
+    } finally {
+      if (mounted) setState(() => _reading = false);
+    }
+  }
+
+  Future<void> _pickScreenshot() async {
+    final file = await FilePicker.pickFile(type: FileType.image);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    final f = File('${(await getTemporaryDirectory()).path}/post_${DateTime.now().millisecondsSinceEpoch}.png');
+    await f.writeAsBytes(bytes);
+    await _readImage(f.path);
+  }
+
   Future<void> _paste() async {
     final d = await Clipboard.getData('text/plain');
     if (d?.text != null) setState(() => _input.text = d!.text!);
@@ -49,19 +90,32 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
 
   Future<void> _run() async {
     final text = _input.text.trim();
-    final onlyLink = RegExp(r'^\S*https?://\S+$').hasMatch(text) || (text.length < 80 && text.contains('lnkd.in'));
+    final link = RegExp(r'https?://\S+').firstMatch(text)?.group(0);
+    final onlyLink = link != null && text.replaceAll(link, '').trim().length < 40;
     if (onlyLink) {
-      await showDialog<void>(
-        context: context,
-        builder: (c) => AlertDialog(
-          title: const Text('Only a link was shared'),
-          content: const Text(
-              'LinkedIn shares just a link, and its posts need a login, so CareerMate can’t read them.\n\n'
-              'In LinkedIn: open the post → press and hold the text → Copy. Then come back and paste it here.'),
-          actions: [FilledButton(onPressed: () => Navigator.pop(c), child: const Text('OK'))],
-        ),
-      );
-      return;
+      setState(() => _reading = true);
+      final fetched = await PostReader.fromLink(link);
+      if (!mounted) return;
+      setState(() => _reading = false);
+      if (fetched.replaceAll(link, '').trim().length >= 60) {
+        _input.text = fetched;
+      } else {
+        final pick = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('This post needs a LinkedIn login'),
+            content: const Text(
+                'We couldn’t read it from the link, because LinkedIn shows it only to signed-in members.\n\n'
+                'Easy way: take a screenshot of the post, then pick it here — CareerMate reads the text from the picture.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Pick screenshot')),
+            ],
+          ),
+        );
+        if (pick == true) await _pickScreenshot();
+        return;
+      }
     }
     if (text.length < 40) {
       showMessage(context, 'Paste the full job post text.', error: true);
@@ -150,7 +204,7 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
         if (p == null) ...[
           const AppCard(
             child: Text(
-              'Saw a job on LinkedIn or WhatsApp? Tap Share → CareerMate there, or copy the post and paste it here. '
+              'Saw a job on LinkedIn or WhatsApp? Share the post link or a screenshot to CareerMate, or paste the text here. '
               'We check it, then show it to everyone looking for that kind of job.',
               style: TextStyle(height: 1.45),
             ),
@@ -160,8 +214,24 @@ class _ShareJobScreenState extends ConsumerState<ShareJobScreen> {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(onPressed: _paste, icon: const Icon(Icons.content_paste_rounded), label: const Text('Paste from clipboard')),
+            child: Wrap(spacing: 4, children: [
+              TextButton.icon(onPressed: _paste, icon: const Icon(Icons.content_paste_rounded), label: const Text('Paste')),
+              TextButton.icon(
+                onPressed: _reading ? null : _pickScreenshot,
+                icon: const Icon(Icons.image_search_rounded),
+                label: const Text('Read from screenshot'),
+              ),
+            ]),
           ),
+          if (_reading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Row(children: [
+                SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2)),
+                SizedBox(width: 10),
+                Text('Reading the post…'),
+              ]),
+            ),
         ] else ...[
           FadeSlideIn(
             child: AppCard(

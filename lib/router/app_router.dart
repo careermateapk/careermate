@@ -122,7 +122,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.cvMaker, builder: (_, _) => const ResumeGalleryScreen()),
       GoRoute(path: Routes.cvMakerEdit, builder: (_, _) => const ResumeEditorScreen()),
       GoRoute(path: Routes.cvMakerFinal, builder: (_, _) => const ResumeFinalScreen()),
-      GoRoute(path: Routes.shareJob, builder: (_, s) => ShareJobScreen(text: s.extra as String? ?? '')),
+      GoRoute(
+        path: Routes.shareJob,
+        builder: (_, s) => s.extra is Map
+            ? ShareJobScreen(imagePath: (s.extra! as Map)['image'] as String?)
+            : ShareJobScreen(text: s.extra is String ? s.extra! as String : ''),
+      ),
       GoRoute(path: Routes.cvReview, builder: (_, _) => const CvReviewScreen()),
       GoRoute(path: Routes.cvCategories, builder: (_, _) => const CategoriesScreen()),
       GoRoute(path: Routes.atsReport, builder: (_, _) => const AtsReportScreen()),

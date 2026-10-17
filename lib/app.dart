@@ -21,6 +21,7 @@ class _CareerMateAppState extends ConsumerState<CareerMateApp> with WidgetsBindi
   final _notif = NotificationService.instance;
   String? _startedFor;
   String? _sharedText;
+  String? _sharedImage;
   StreamSubscription<List<SharedMediaFile>>? _shareSub;
 
   @override
@@ -39,6 +40,12 @@ class _CareerMateAppState extends ConsumerState<CareerMateApp> with WidgetsBindi
 
   /// Text shared from another app (e.g. a LinkedIn job post).
   void _onShared(List<SharedMediaFile> files) {
+    final image = files.where((f) => f.type == SharedMediaType.image).map((f) => f.path).firstOrNull;
+    if (image != null) {
+      _sharedImage = image;
+      _openShared();
+      return;
+    }
     final parts = [
       for (final f in files)
         if (f.type == SharedMediaType.text || f.type == SharedMediaType.url) ...[f.path, f.message ?? ''],
@@ -49,8 +56,15 @@ class _CareerMateAppState extends ConsumerState<CareerMateApp> with WidgetsBindi
   }
 
   void _openShared() {
+    if (_startedFor == null) return;
+    final image = _sharedImage;
+    if (image != null) {
+      _sharedImage = null;
+      ref.read(routerProvider).push('/share-job', extra: {'image': image});
+      return;
+    }
     final text = _sharedText;
-    if (text == null || _startedFor == null) return;
+    if (text == null) return;
     _sharedText = null;
     ref.read(routerProvider).push('/share-job', extra: text);
   }
