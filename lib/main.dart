@@ -14,58 +14,132 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Draw something right away, then get ready in the background. If a step hangs or fails,
+  // the screen says which one instead of staying on the logo forever.
+  runApp(const BootApp());
+}
 
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  } catch (e) {
-    runApp(SetupErrorApp(message: e.toString()));
-    return;
+class BootApp extends StatefulWidget {
+  const BootApp({super.key});
+  @override
+  State<BootApp> createState() => _BootAppState();
+}
+
+class _BootAppState extends State<BootApp> {
+  Widget? _app;
+  String? _error;
+  String _step = 'Starting';
+
+  @override
+  void initState() {
+    super.initState();
+    _boot();
   }
 
-  // On-phone notifications (no server). Permission is asked after a job seeker signs in.
-  try {
-    await NotificationService.instance.init(requestPermission: false);
-  } catch (_) {}
-
-  // Needed before reading PDFs with the document API (CV text extraction).
-  pdfrxFlutterInitialize();
-
-  if (!kIsWeb) {
-    await GoogleSignIn.instance.initialize(
-      serverClientId: AppConfig.googleWebClientId.isEmpty ? null : AppConfig.googleWebClientId,
-    );
+  Future<T> _run<T>(String step, Future<T> Function() f, {int seconds = 20}) {
+    if (mounted) setState(() => _step = step);
+    return f().timeout(Duration(seconds: seconds), onTimeout: () => throw Exception('$step took too long'));
   }
 
-  // Instead of a blank grey screen, show what went wrong (helps us fix it from a screenshot).
-  ErrorWidget.builder = (details) => Material(
-        color: const Color(0xFF0B1328),
-        child: SafeArea(
+  Future<void> _boot() async {
+    try {
+      try {
+        await _run('Connecting', () => Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform), seconds: 30);
+      } catch (e) {
+        setState(() => _app = SetupErrorApp(message: e.toString()));
+        return;
+      }
+
+      // On-phone notifications (no server). Permission is asked after a job seeker signs in.
+      try {
+        await _run('Notifications', () => NotificationService.instance.init(requestPermission: false), seconds: 8);
+      } catch (_) {}
+
+      // Needed before reading PDFs with the document API (CV text extraction).
+      try {
+        pdfrxFlutterInitialize();
+      } catch (_) {}
+
+      if (!kIsWeb) {
+        try {
+          await _run('Google sign-in', () => GoogleSignIn.instance.initialize(
+                serverClientId: AppConfig.googleWebClientId.isEmpty ? null : AppConfig.googleWebClientId,
+              ), seconds: 10);
+        } catch (_) {}
+      }
+
+    ErrorWidget.builder = (details) => Material(
+          color: const Color(0xFF0B1328),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.error_outline_rounded, color: Color(0xFFFBBF24), size: 40),
+                const SizedBox(height: 12),
+                const Text('Something went wrong on this screen',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                const Text('Go back and try again. If it happens again, send a screenshot of this message.',
+                    style: TextStyle(color: Color(0xFFC9D3EA), fontSize: 13.5)),
+                const SizedBox(height: 12),
+                Text(details.exceptionAsString(),
+                    maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8A96B8), fontSize: 11.5)),
+              ]),
+            ),
+          ),
+        );
+      final prefs = await _run('Settings', () => SharedPreferencesWithCache.create(
+            cacheOptions: const SharedPreferencesWithCacheOptions(allowList: PrefKeys.all),
+          ));
+
+      if (!mounted) return;
+      setState(() => _app = ProviderScope(
+            overrides: [prefsProvider.overrideWithValue(prefs)],
+            child: const CareerMateApp(),
+          ));
+    } catch (e) {
+      if (mounted) setState(() => _error = '$_step: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_app != null) return _app!;
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFF0B1328),
+        body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.error_outline_rounded, color: Color(0xFFFBBF24), size: 40),
-              const SizedBox(height: 12),
-              const Text('Something went wrong on this screen',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              const Text('Go back and try again. If it happens again, send a screenshot of this message.',
-                  style: TextStyle(color: Color(0xFFC9D3EA), fontSize: 13.5)),
-              const SizedBox(height: 12),
-              Text(details.exceptionAsString(),
-                  maxLines: 6, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF8A96B8), fontSize: 11.5)),
-            ]),
+            child: _error == null
+                ? Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('CareerMate', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 20),
+                    const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)),
+                    const SizedBox(height: 12),
+                    Text(_step, style: const TextStyle(color: Color(0xFF8A96B8), fontSize: 12)),
+                  ])
+                : Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.error_outline_rounded, color: Color(0xFFFBBF24), size: 40),
+                    const SizedBox(height: 12),
+                    const Text('App could not start', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFC9D3EA), fontSize: 12.5)),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () {
+                        setState(() => _error = null);
+                        _boot();
+                      },
+                      child: const Text('Try again'),
+                    ),
+                  ]),
           ),
         ),
-      );
-
-  final prefs = await SharedPreferencesWithCache.create(
-    cacheOptions: const SharedPreferencesWithCacheOptions(allowList: PrefKeys.all),
-  );
-
-  runApp(ProviderScope(
-    overrides: [prefsProvider.overrideWithValue(prefs)],
-    child: const CareerMateApp(),
-  ));
+      ),
+    );
+  }
 }
 
 /// Shown instead of the app when Firebase is not set up yet.
