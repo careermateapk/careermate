@@ -64,4 +64,4 @@ flutter:
 dependency_overrides:
   image: 4.5.4
   # 2.5.0 (Pigeon JNI) crashes at start in release builds: NoSuchMethodError on getAll.
-  shared_preferences_android: 2.4.29
+  shared_preferences_android: 2.4.28
