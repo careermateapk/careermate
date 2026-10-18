@@ -10,8 +10,8 @@ import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../profile/profile_repository.dart';
 
-/// Web page a manager opens to confirm (Firebase Hosting, free on the Spark plan).
-const verifyPageUrl = 'https://careermate-886ab.web.app/verify.html';
+/// Web page a manager opens to confirm (GitHub Pages, free).
+const verifyPageUrl = 'https://careermateapk.github.io/careermate/verify.html';
 
 class WorkCheck {
   WorkCheck(this.id, this.m);

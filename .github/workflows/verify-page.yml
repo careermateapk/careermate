@@ -8,14 +8,19 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: verify-page
+  group: pages
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Write Firebase web config
@@ -28,30 +33,9 @@ jobs:
           cfg = {'apiKey': key, 'authDomain': pid + '.firebaseapp.com', 'projectId': pid}
           open('site/config.js', 'w').write('window.FIREBASE_CONFIG = ' + json.dumps(cfg) + ';\n')
           PY
-      - name: Check the key works from the web
-        run: |
-          KEY=$(python3 -c "import json;print(json.load(open('google-services.json'))['client'][0]['api_key'][0]['current_key'])")
-          OUT=$(curl -s -X POST "https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=$KEY" \
-            -H 'Content-Type: application/json' -H 'Referer: https://careermate-886ab.web.app/' \
-            -d '{"identifier":"check@example.com","continueUri":"https://careermate-886ab.web.app/"}')
-          if echo "$OUT" | grep -q '"error"'; then
-            echo "::warning title=Firebase key blocked on web::$(echo "$OUT" | tr '\n' ' ' | cut -c1-400)"
-          else
-            echo "::notice title=Firebase key OK on web::sign-in works"
-          fi
-      - name: Publish to Firebase Hosting (free)
-        env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          if [ -z "$SA" ]; then
-            echo "::warning title=Secret missing::Add the FIREBASE_SERVICE_ACCOUNT secret (see setup steps), then run this again."
-            exit 0
-          fi
-          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx -y firebase-tools@13 deploy --only hosting --project careermate-886ab --non-interactive 2>&1 | tee deploy.log
-          if ! grep -q "Deploy complete" deploy.log; then
-            echo "::error title=Hosting deploy failed::$(grep -iE 'error|denied|not found' deploy.log | head -5 | tr '\n' ' ' | cut -c1-600)"
-            exit 1
-          fi
-          echo "::notice title=Page is live::https://careermate-886ab.web.app/verify.html"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
