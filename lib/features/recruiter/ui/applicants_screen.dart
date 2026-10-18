@@ -9,6 +9,7 @@ import '../../../widgets/common.dart';
 import '../../outreach/email_service.dart';
 import '../../profile/cv_parser.dart';
 import '../posted_job.dart';
+import 'slot_picker.dart';
 
 const _tabs = [('new', 'New'), ('shortlisted', 'Shortlisted'), ('interview', 'Interview'), ('rejected', 'Rejected')];
 
@@ -208,6 +209,11 @@ class _ApplicantCard extends StatelessWidget {
           for (final s in jobSkills.where((s) => !app.skills.contains(s)).take(2))
             StatusChip('${CvParser.prettySkill(s)} · not in CV', tone: ChipTone.warning),
           if (app.cvEmailed) const StatusChip('CV sent to your email', tone: ChipTone.info),
+          for (final b in app.badges) StatusChip('🛡️ $b', tone: ChipTone.positive),
+          if (app.chosenSlot != null)
+            StatusChip('Interview: ${slotText(app.chosenSlot!)}', tone: ChipTone.positive)
+          else if (app.slots.isNotEmpty)
+            const StatusChip('Times sent · waiting for candidate', tone: ChipTone.warning),
         ]),
         const SizedBox(height: 10),
         Row(children: [
@@ -224,9 +230,32 @@ class _ApplicantCard extends StatelessWidget {
           if (app.status != 'rejected') const SizedBox(width: 8),
           Expanded(
             child: FilledButton(
-              onPressed: () => onStatus(switch (app.status) { 'new' => 'shortlisted', 'shortlisted' => 'interview', _ => 'shortlisted' }),
+              onPressed: () async {
+                if (app.status == 'shortlisted' || app.status == 'interview') {
+                  final r = await pickInterviewSlots(context, initial: app.slots, info: app.slotInfo);
+                  if (r == null || !context.mounted) return;
+                  try {
+                    await ProviderScope.containerOf(context, listen: false)
+                        .read(recruiterRepositoryProvider)
+                        .offerSlots(job.id, app.seekerUid, r.$1, r.$2);
+                    if (context.mounted) showMessage(context, 'Interview times sent. The candidate will pick one.');
+                  } catch (_) {
+                    if (context.mounted) showMessage(context, 'Could not send. Update the Firebase rules, then try again.', error: true);
+                  }
+                  return;
+                }
+                onStatus(app.status == 'new' ? 'shortlisted' : 'shortlisted');
+              },
               style: FilledButton.styleFrom(minimumSize: const Size(0, 42), backgroundColor: AppColors.green, padding: EdgeInsets.zero),
-              child: Text(switch (app.status) { 'new' => 'Shortlist', 'shortlisted' => 'Interview', 'rejected' => 'Restore', _ => 'Shortlist' }),
+              child: FittedBox(
+                child: Text(switch (app.status) {
+                  'new' => 'Shortlist',
+                  'shortlisted' => 'Interview times',
+                  'interview' => app.chosenSlot == null ? 'Edit times' : 'Change time',
+                  'rejected' => 'Restore',
+                  _ => 'Shortlist',
+                }),
+              ),
             ),
           ),
         ]),

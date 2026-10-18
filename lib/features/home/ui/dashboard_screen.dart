@@ -56,6 +56,8 @@ class DashboardScreen extends ConsumerWidget {
                               : const _UploadPromptCard(key: ValueKey('up')),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  FadeSlideIn(index: 3, child: const _Tools()),
                   const SizedBox(height: 20),
                   FadeSlideIn(index: 3, child: Text('Your next steps', style: AppTheme.display(context, size: 17))),
                   const SizedBox(height: 10),
@@ -88,6 +90,46 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Tools extends StatelessWidget {
+  const _Tools();
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = [
+      ('🚀', '30-day plan', 'Daily tasks & streak', Routes.plan, const [Color(0xFF1E3A8A), Color(0xFF312E81)]),
+      ('🛡️', 'Skill tests', 'Earn badges', Routes.skills, const [Color(0xFF14532D), Color(0xFF166534)]),
+      ('⚖️', 'Compare offers', 'In-hand, bond, notice', Routes.offers, const [Color(0xFF4C1D95), Color(0xFF6D28D9)]),
+      ('📄', 'CV maker', '40 templates', Routes.cvMaker, const [Color(0xFF0E7490), Color(0xFF0F766E)]),
+    ];
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.75,
+      children: [
+        for (final t in tools)
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => context.push(t.$4),
+            child: Ink(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(gradient: LinearGradient(colors: t.$5), borderRadius: BorderRadius.circular(18)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text(t.$1, style: const TextStyle(fontSize: 22)),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t.$2, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14.5)),
+                  Text(t.$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFDCE4F7), fontSize: 11.5)),
+                ]),
+              ]),
+            ),
+          ),
+      ],
     );
   }
 }

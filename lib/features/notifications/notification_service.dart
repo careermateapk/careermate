@@ -256,6 +256,8 @@ class NotificationService {
       await _checkApplications(db, user.uid, s, settings, fresh);
       await _checkNewJobs(db, user.uid, s, settings, fresh);
 
+      await _checkPlan(s, fresh);
+
       final items = [for (final m in (s['items'] as List? ?? const [])) Map<String, dynamic>.from(m as Map)];
       items.insertAll(0, fresh.map((n) => n.toJson()));
       s['items'] = items.take(60).toList();
@@ -292,6 +294,32 @@ class NotificationService {
     } finally {
       _running = false;
     }
+  }
+
+  /// Daily 30-day-plan reminder at the user's chosen hour, if nothing is ticked yet today.
+  Future<void> _checkPlan(Map<String, dynamic> s, List<AppNotification> out) async {
+    try {
+      final f = File('${(await getApplicationDocumentsDirectory()).path}/plan.json');
+      if (!await f.exists()) return;
+      final plan = Map<String, dynamic>.from(jsonDecode(await f.readAsString()) as Map);
+      final start = DateTime.tryParse(plan['start'] as String? ?? '');
+      if (start == null) return;
+      final now = DateTime.now();
+      if (now.difference(start).inDays >= 30) return;
+      final hour = (plan['hour'] as num?)?.toInt() ?? 19;
+      final key = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final done = ((plan['done'] as Map?)?[key] as List?) ?? const [];
+      if (now.hour < hour || done.isNotEmpty || s['planNotified'] == key) return;
+      s['planNotified'] = key;
+      out.add(AppNotification(
+        id: 'plan-$key',
+        kind: 'jobs',
+        title: 'Day ${now.difference(DateTime(start.year, start.month, start.day)).inDays + 1} of your Job Ready plan',
+        body: 'Today’s small tasks are ready — keep your streak going 🔥',
+        at: now,
+        route: '/plan',
+      ));
+    } catch (_) {}
   }
 
   Future<void> _show(AppNotification n) async {
@@ -339,7 +367,42 @@ class NotificationService {
         ).toJson());
 
         final before = Map<String, dynamic>.from(known[jobId] as Map? ?? {});
-        known[jobId] = {'status': status, 'viewed': viewed};
+        final slotCount = (m['slots'] as List? ?? const []).length;
+        final chosen = (m['chosenSlot'] as Timestamp?)?.toDate();
+        known[jobId] = {
+          ...before,
+          'status': status,
+          'viewed': viewed,
+        };
+        final now0 = DateTime.now();
+        if (!firstRun && settings.applications) {
+          if (slotCount > 0 && chosen == null && before['slotsAsked'] != slotCount) {
+            out.add(AppNotification(
+              id: 'app-$jobId-slots-$slotCount',
+              kind: 'interview',
+              title: 'Pick your interview time',
+              body: '$company shared $slotCount time${slotCount == 1 ? '' : 's'} for $title. Tap to choose one.',
+              at: now0,
+              route: '/tracker',
+            ));
+            known[jobId]['slotsAsked'] = slotCount;
+          }
+          if (chosen != null && chosen.isAfter(now0)) {
+            final key = chosen.toIso8601String();
+            final hours = chosen.difference(now0).inMinutes / 60;
+            if (hours <= 24 && hours > 2 && before['remindDay'] != key) {
+              out.add(AppNotification(id: 'rem-$jobId-day-$key', kind: 'interview', title: 'Interview tomorrow',
+                  body: '$title at $company · ${chosen.hour % 12 == 0 ? 12 : chosen.hour % 12}:${chosen.minute.toString().padLeft(2, '0')} ${chosen.hour < 12 ? 'am' : 'pm'}. Check the details and documents.',
+                  at: now0, route: '/tracker'));
+              known[jobId]['remindDay'] = key;
+            }
+            if (hours <= 2 && before['remindHour'] != key) {
+              out.add(AppNotification(id: 'rem-$jobId-hour-$key', kind: 'interview', title: 'Interview soon',
+                  body: '$title at $company starts in about ${(hours * 60).round()} minutes. All the best!', at: now0, route: '/tracker'));
+              known[jobId]['remindHour'] = key;
+            }
+          }
+        }
         if (firstRun || !settings.applications || before.isEmpty) continue;
         final now = DateTime.now();
         if (status != before['status'] && _statusText.containsKey(status)) {

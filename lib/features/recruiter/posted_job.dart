@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../jobs/job_models.dart';
 import '../profile/profile_repository.dart';
+import '../skills/skill_bank.dart';
+import '../skills/skill_repository.dart';
 
 /// A job posted by a recruiter on CareerMate (posted_jobs/{id}).
 class PostedJob {
@@ -142,6 +144,10 @@ class Application {
     required this.cvEmailed,
     this.appliedAt,
     this.viewedAt,
+    this.badges = const [],
+    this.slots = const [],
+    this.slotInfo = const {},
+    this.chosenSlot,
   });
 
   final String seekerUid;
@@ -159,6 +165,14 @@ class Application {
   final String status;
   final bool cvEmailed;
   final DateTime? viewedAt;
+
+  /// Passed skill tests, e.g. "Tally Prime 80%".
+  final List<String> badges;
+
+  /// Interview times offered by the recruiter, and the one the candidate picked.
+  final List<DateTime> slots;
+  final Map<String, String> slotInfo;
+  final DateTime? chosenSlot;
   final DateTime? appliedAt;
 
   factory Application.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
@@ -178,6 +192,10 @@ class Application {
       cvEmailed: m['cvEmailed'] as bool? ?? false,
       appliedAt: (m['appliedAt'] as Timestamp?)?.toDate(),
       viewedAt: (m['viewedAt'] as Timestamp?)?.toDate(),
+      badges: List<String>.from(m['badges'] as List? ?? const []),
+      slots: [for (final s in (m['slots'] as List? ?? const [])) if (s is Timestamp) s.toDate()],
+      slotInfo: Map<String, String>.from((m['slotInfo'] as Map?)?.map((k, v) => MapEntry('$k', '$v')) ?? const {}),
+      chosenSlot: (m['chosenSlot'] as Timestamp?)?.toDate(),
     );
   }
 }
@@ -241,6 +259,22 @@ class RecruiterRepository {
       .doc(seekerUid)
       .update({'status': status, 'updatedAt': FieldValue.serverTimestamp()});
 
+  /// Recruiter offers interview times; the candidate then picks one.
+  Future<void> offerSlots(String jobId, String seekerUid, List<DateTime> slots, Map<String, String> info) =>
+      _jobs.doc(jobId).collection('applications').doc(seekerUid).update({
+        'slots': slots.map(Timestamp.fromDate).toList(),
+        'slotInfo': info,
+        'status': 'interview',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  /// Candidate picks one of the offered times.
+  Future<void> chooseSlot(String jobId, String seekerUid, DateTime slot) =>
+      _jobs.doc(jobId).collection('applications').doc(seekerUid).update({
+        'chosenSlot': Timestamp.fromDate(slot),
+        'chosenAt': FieldValue.serverTimestamp(),
+      });
+
   /// Records the first time the recruiter opens an application, so the candidate is told "HR viewed".
   Future<void> markViewed(String jobId, String seekerUid) => _jobs
       .doc(jobId)
@@ -266,7 +300,12 @@ class RecruiterRepository {
     required int score,
     required bool cvEmailed,
   }) async {
+    var badges = <String>[];
+    try {
+      badges = await SkillRepository(_db).badgeLabels(uid, (id) => skillTestById(id)?.name ?? id);
+    } catch (_) {}
     await _jobs.doc(jobId).collection('applications').doc(uid).set({
+      'badges': badges,
       'name': profile.name,
       'email': profile.email,
       'phone': profile.phone,

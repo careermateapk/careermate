@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
+import '../../offers/offers_screen.dart';
 import '../tracker.dart';
+import 'pick_slot_screen.dart';
 
 class TrackerScreen extends ConsumerStatefulWidget {
   const TrackerScreen({super.key});
@@ -40,7 +42,13 @@ class _TrackerScreenState extends ConsumerState<TrackerScreen> {
     ]..sort((a, b) => a.$3.compareTo(b.$3));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Applications')),
+      appBar: AppBar(title: const Text('Applications'), actions: [
+        TextButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CompareOffersScreen())),
+          icon: const Icon(Icons.balance_rounded, size: 18),
+          label: const Text('Compare offers'),
+        ),
+      ]),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(context, null),
         icon: const Icon(Icons.add_rounded),
@@ -200,6 +208,18 @@ class _TrackerScreenState extends ConsumerState<TrackerScreen> {
           else if (t.stage == Stage.applied && t.followUpAt != null) StatusChip('Follow up ${_when(t.followUpAt!)}'),
           if (t.notes.isNotEmpty) const StatusChip('Notes'),
         ]),
+        if (t.fromCareerMate && t.offeredSlots > 0) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: t.chosenSlot == null ? AppColors.green : null),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PickSlotScreen(jobId: t.id))),
+              icon: const Icon(Icons.event_available_rounded, size: 18),
+              label: Text(t.chosenSlot == null ? 'Pick your interview time' : 'Interview booked · change'),
+            ),
+          ),
+        ],
         if (t.followUpDue || t.url.isNotEmpty || t.contactEmail.isNotEmpty) ...[
           const SizedBox(height: 8),
           Row(children: [

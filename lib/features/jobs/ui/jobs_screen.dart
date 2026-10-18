@@ -8,7 +8,9 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/common.dart';
 import '../../profile/profile_repository.dart';
 import '../job_models.dart';
+import '../benefits.dart';
 import '../city_filter.dart';
+import '../women_filter.dart';
 import 'other_sites.dart';
 
 enum _Filter { all, remote, fresher, official, shared }
@@ -28,6 +30,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   /// null = not chosen yet (starts with the CV city), '' = all of India.
   String? _city;
   bool _nearby = true;
+  final Set<Perk> _perks = {};
+  WomenFilter _women = const WomenFilter();
 
   @override
   void dispose() {
@@ -81,10 +85,26 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     final cvCity = profile.location.split(',').first.trim();
     final city = _city ?? cvCity;
     final q = _query.toLowerCase();
-    final matches = data.jobs.map((j) => JobMatch.of(j, profile)).where((m) {
-      final j = m.job;
+    final recs = ref.watch(womenRecsProvider).value ?? const <String, int>{};
+    bool base(JobItem j) {
       if (q.isNotEmpty && !('${j.title} ${j.company} ${j.location}'.toLowerCase().contains(q))) return false;
       if (_filter != _Filter.remote && city.isNotEmpty && !jobInCity(j, city, nearby: _nearby)) return false;
+      final p = perksOf(j);
+      for (final want in _perks) {
+        final ok = switch (want) {
+          Perk.pf => p.contains(Perk.pf) || p.contains(Perk.esi),
+          Perk.wfh => p.contains(Perk.wfh) || p.contains(Perk.hybrid),
+          _ => p.contains(want),
+        };
+        if (!ok) return false;
+      }
+      return true;
+    }
+
+    final matches = data.jobs.map((j) => JobMatch.of(j, profile)).where((m) {
+      final j = m.job;
+      if (!base(j)) return false;
+      if (_women.active && !_women.allows(j, recs)) return false;
       return switch (_filter) {
         _Filter.all => true,
         _Filter.remote => j.remote,
@@ -159,6 +179,38 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   }),
                   selected: _filter == f,
                   onSelected: (_) => setState(() => _filter = f),
+                ),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                avatar: const Text('♀'),
+                label: Text(_women.active ? 'For women · ${_women.count}' : 'For women'),
+                selected: _women.active,
+                selectedColor: const Color(0xFFEC4899).withValues(alpha: 0.25),
+                onSelected: (_) async {
+                  final r = await pickWomenFilter(
+                    context,
+                    _women,
+                    (f) => data.jobs.where((j) => base(j) && (!f.active || f.allows(j, recs))).length,
+                  );
+                  if (r != null) setState(() => _women = r);
+                },
+              ),
+            ),
+            for (final p in const [Perk.cab, Perk.pf, Perk.fiveDay, Perk.food, Perk.wfh, Perk.health])
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text('${p.emoji} ${switch (p) { Perk.pf => 'PF / ESI', Perk.wfh => 'WFH / Hybrid', _ => p.label }}'),
+                  selected: _perks.contains(p),
+                  onSelected: (v) => setState(() => v ? _perks.add(p) : _perks.remove(p)),
                 ),
               ),
           ]),
@@ -263,6 +315,12 @@ class _JobCard extends StatelessWidget {
           if (j.looksFresherFriendly) const StatusChip('Fresher-friendly'),
           if (j.employmentType != null && j.employmentType!.isNotEmpty) StatusChip(j.employmentType!),
         ]),
+        if (perksOf(j).isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final p in perksOf(j).take(5)) StatusChip('${p.emoji} ${p.label}', tone: p.caution ? ChipTone.warning : ChipTone.positive),
+          ]),
+        ],
         const SizedBox(height: 8),
         Text(postedText(j), style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
         const SizedBox(height: 10),

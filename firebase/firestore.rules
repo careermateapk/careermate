@@ -52,8 +52,12 @@ service cloud.firestore {
       match /applications/{seekerUid} {
         allow create: if isOwner(seekerUid) && request.resource.data.status == 'new';
         allow read: if isOwner(seekerUid) || (signedIn() && jobOwner(jobId) == request.auth.uid);
-        allow update: if signedIn() && jobOwner(jobId) == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'viewedAt']);
+        // Recruiter: status, viewed time and interview times. Candidate: only picks one offered time.
+        allow update: if (signedIn() && jobOwner(jobId) == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'viewedAt', 'slots', 'slotInfo']))
+          || (isOwner(seekerUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chosenSlot', 'chosenAt'])
+            && request.resource.data.chosenSlot in resource.data.slots);
         allow delete: if isOwner(seekerUid) || (signedIn() && jobOwner(jobId) == request.auth.uid);
       }
     }
@@ -72,6 +76,17 @@ service cloud.firestore {
         && request.resource.data.reportedBy == resource.data.reportedBy.concat([request.auth.uid])
         && request.resource.data.reports == resource.data.reports + 1;
       allow delete: if signedIn() && resource.data.sharedBy == request.auth.uid;
+    }
+
+    // "Good workplace for women" recommendations: one per user per company
+    match /women_recs/{companyId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.count == 1 && request.resource.data.by == [request.auth.uid];
+      allow update: if signedIn()
+        && !(request.auth.uid in resource.data.by)
+        && request.resource.data.by == resource.data.by.concat([request.auth.uid])
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.company == resource.data.company;
     }
 
     match /{document=**} {

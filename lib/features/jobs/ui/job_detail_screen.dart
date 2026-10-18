@@ -13,6 +13,7 @@ import '../../community/job_post.dart';
 import '../../tracker/tracker.dart';
 import '../job_models.dart';
 import 'about_job.dart';
+import 'benefits_card.dart';
 import 'other_sites.dart';
 import 'jobs_screen.dart' show postedText;
 
@@ -106,6 +107,8 @@ class JobDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   FadeSlideIn(index: 2, child: _Authenticity(job: j)),
+                  const SizedBox(height: 12),
+                  FadeSlideIn(index: 2, child: BenefitsCard(job: j)),
                   const SizedBox(height: 12),
                   FadeSlideIn(index: 3, child: AboutJobCard(match: match)),
                   const SizedBox(height: 12),

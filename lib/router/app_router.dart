@@ -15,6 +15,9 @@ import '../features/jobs/ui/jobs_screen.dart';
 import '../features/jobs/ui/sources_screen.dart';
 import '../features/community/ui/share_job_screen.dart';
 import '../features/resume/ui/resume_screens.dart';
+import '../features/plan/plan_screen.dart';
+import '../features/skills/ui/skill_screens.dart';
+import '../features/offers/offers_screen.dart';
 import '../features/tracker/ui/tracker_screen.dart';
 import '../features/prep/ui/prep_screen.dart';
 import '../features/notifications/ui/notifications_screen.dart';
@@ -53,6 +56,9 @@ class Routes {
   static const sources = '/sources';
   static const notifications = '/notifications';
   static const shareJob = '/share-job';
+  static const plan = '/plan';
+  static const skills = '/skills';
+  static const offers = '/offers';
   static const cvMaker = '/cv-maker';
   static const cvMakerEdit = '/cv-maker/edit';
   static const cvMakerFinal = '/cv-maker/final';
@@ -119,6 +125,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.settings, builder: (_, _) => const SettingsScreen()),
       GoRoute(path: Routes.sources, builder: (_, _) => const SourcesScreen()),
       GoRoute(path: Routes.notifications, builder: (_, _) => const NotificationsScreen()),
+      GoRoute(path: Routes.plan, builder: (_, _) => const JobReadyPlanScreen()),
+      GoRoute(path: Routes.skills, builder: (_, _) => const SkillTestsScreen()),
+      GoRoute(path: Routes.offers, builder: (_, _) => const CompareOffersScreen()),
       GoRoute(path: Routes.cvMaker, builder: (_, _) => const ResumeGalleryScreen()),
       GoRoute(path: Routes.cvMakerEdit, builder: (_, _) => const ResumeEditorScreen()),
       GoRoute(path: Routes.cvMakerFinal, builder: (_, _) => const ResumeFinalScreen()),

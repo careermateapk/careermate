@@ -89,7 +89,8 @@ class _CareerMateAppState extends ConsumerState<CareerMateApp> with WidgetsBindi
     if (route == null || _startedFor == null) return;
     _notif.pendingRoute.value = null;
     final router = ref.read(routerProvider);
-    route == '/jobs' ? router.go(route) : router.push(route);
+    const tabs = {'/jobs', '/tracker', '/home', '/cv', '/prep'};
+    tabs.contains(route) ? router.go(route) : router.push(route);
   }
 
   /// Starts notifications once a job seeker is signed in.

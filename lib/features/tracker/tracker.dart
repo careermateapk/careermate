@@ -43,6 +43,10 @@ class TrackedJob {
   /// Live status set by a recruiter for jobs applied on CareerMate.
   String? recruiterStatus;
 
+  /// Interview times offered on CareerMate and the one picked.
+  int offeredSlots = 0;
+  DateTime? chosenSlot;
+
   bool get fromCareerMate => source == 'careermate';
   bool get followUpDue => stage == Stage.applied && followUpAt != null && !followUpAt!.isAfter(DateTime.now());
 
@@ -144,6 +148,10 @@ class TrackerRepository {
                 );
             t.source = 'careermate';
             t.recruiterStatus = status;
+            final am = app.data() ?? const {};
+            t.offeredSlots = (am['slots'] as List? ?? const []).length;
+            t.chosenSlot = (am['chosenSlot'] as Timestamp?)?.toDate();
+            if (t.chosenSlot != null) t.interviewAt = t.chosenSlot;
             if (status == 'interview' && t.stage.index < Stage.interview.index) t.stage = Stage.interview;
             if (status == 'rejected') t.stage = Stage.rejected;
             byId[jobId] = t;
