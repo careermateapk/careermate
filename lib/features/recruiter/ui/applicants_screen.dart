@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../verify/work_verify.dart';
 import '../../../router/app_router.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -215,6 +216,7 @@ class _ApplicantCard extends StatelessWidget {
           else if (app.slots.isNotEmpty)
             const StatusChip('Times sent · waiting for candidate', tone: ChipTone.warning),
         ]),
+        VerifiedWorkChips(uid: app.seekerUid),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: OutlinedButton(onPressed: () => _showDetails(context), style: _small, child: const Text('Details'))),

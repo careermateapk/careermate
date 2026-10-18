@@ -32,6 +32,8 @@ import '../features/recruiter/ui/recruiter_home_screen.dart';
 import '../features/profile/ui/categories_screen.dart';
 import '../features/profile/ui/cv_review_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
+import '../features/community/referrals.dart';
+import '../features/verify/work_verify.dart';
 
 class Routes {
   static const splash = '/splash';
@@ -59,6 +61,8 @@ class Routes {
   static const plan = '/plan';
   static const skills = '/skills';
   static const offers = '/offers';
+  static const referrals = '/referrals';
+  static const verifyWork = '/verify-work';
   static const cvMaker = '/cv-maker';
   static const cvMakerEdit = '/cv-maker/edit';
   static const cvMakerFinal = '/cv-maker/final';
@@ -128,6 +132,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.plan, builder: (_, _) => const JobReadyPlanScreen()),
       GoRoute(path: Routes.skills, builder: (_, _) => const SkillTestsScreen()),
       GoRoute(path: Routes.offers, builder: (_, _) => const CompareOffersScreen()),
+      GoRoute(path: Routes.referrals, builder: (_, _) => const ReferralsHomeScreen()),
+      GoRoute(path: Routes.verifyWork, builder: (_, _) => const VerifyExperienceScreen()),
       GoRoute(path: Routes.cvMaker, builder: (_, _) => const ResumeGalleryScreen()),
       GoRoute(path: Routes.cvMakerEdit, builder: (_, _) => const ResumeEditorScreen()),
       GoRoute(path: Routes.cvMakerFinal, builder: (_, _) => const ResumeFinalScreen()),

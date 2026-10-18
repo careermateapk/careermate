@@ -12,6 +12,9 @@ import '../../recruiter/posted_job.dart';
 import '../../community/job_post.dart';
 import '../../tracker/tracker.dart';
 import '../job_models.dart';
+import '../../company/company_check_screen.dart';
+import '../../community/interview_reports.dart';
+import '../../community/referrals.dart';
 import 'about_job.dart';
 import 'benefits_card.dart';
 import 'other_sites.dart';
@@ -366,6 +369,27 @@ class _Authenticity extends StatelessWidget {
           text: checked == null ? 'Live status not checked yet.' : 'Listing seen on ${checked.day}/${checked.month}/${checked.year}. It may have closed since.',
         ),
         Text('Source: ${job.sourceName}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 4, children: [
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => CompanyCheckScreen(args: CompanyCheckArgs(company: job.company, email: job.contactEmail, text: job.fullText)))),
+            icon: const Icon(Icons.fact_check_outlined, size: 18),
+            label: const Text('Is this company real?'),
+          ),
+          if (job.company.trim().isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InterviewReportsScreen(company: job.company))),
+              icon: const Icon(Icons.forum_outlined, size: 18),
+              label: const Text('Interview experiences'),
+            ),
+          if (job.company.trim().isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReferralScreen(job: job))),
+              icon: const Icon(Icons.handshake_outlined, size: 18),
+              label: const Text('Get a referral'),
+            ),
+        ]),
       ]),
     );
   }

@@ -18,6 +18,13 @@ service cloud.firestore {
         && (request.auth.token.email == 'ksuraj.th@gmail.com' || !request.auth.token.email.matches('.*@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)[.].*'))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter';
     }
+    // A company email (not Gmail/Yahoo etc.); the test email also counts
+    function companyEmail(e) {
+      return e is string && (e == 'ksuraj.th@gmail.com' || (e.matches('.+@.+[.].+') && !e.matches('.*@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)[.].*')));
+    }
+    function verifiedCompanyUser() {
+      return signedIn() && request.auth.token.email_verified == true && companyEmail(request.auth.token.email);
+    }
     function jobOwner(jobId) {
       return get(/databases/$(database)/documents/posted_jobs/$(jobId)).data.recruiterUid;
     }
@@ -78,6 +85,30 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.sharedBy == request.auth.uid;
     }
 
+    // Scam reports about a company: one per user per company
+    match /company_reports/{companyId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.count == 1 && request.resource.data.by == [request.auth.uid];
+      allow update: if signedIn()
+        && !(request.auth.uid in resource.data.by)
+        && request.resource.data.by == resource.data.by.concat([request.auth.uid])
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.company == resource.data.company;
+    }
+
+    // Anonymous interview experiences
+    match /interview_reports/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.reports == 0 && request.resource.data.reportedBy.size() == 0;
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reports', 'reportedBy'])
+        && !(request.auth.uid in resource.data.reportedBy)
+        && request.resource.data.reportedBy == resource.data.reportedBy.concat([request.auth.uid])
+        && request.resource.data.reports == resource.data.reports + 1;
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
     // "Good workplace for women" recommendations: one per user per company
     match /women_recs/{companyId} {
       allow read: if signedIn();
@@ -87,6 +118,43 @@ service cloud.firestore {
         && request.resource.data.by == resource.data.by.concat([request.auth.uid])
         && request.resource.data.count == resource.data.count + 1
         && request.resource.data.company == resource.data.company;
+    }
+
+    // People who offer referrals: only with a verified company email
+    match /referrers/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && verifiedCompanyUser()
+        && request.resource.data.email == request.auth.token.email;
+      allow delete: if isOwner(uid);
+    }
+
+    // Referral requests: the seeker sends, only the referrer answers
+    match /referral_requests/{id} {
+      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && exists(/databases/$(database)/documents/referrers/$(request.resource.data.toUid));
+      allow update: if signedIn() && resource.data.toUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'answeredAt'])
+        && request.resource.data.status in ['referred', 'declined'];
+      allow delete: if signedIn() && resource.data.fromUid == request.auth.uid;
+    }
+
+    // Work experience confirmed by a manager with their company email (web page)
+    match /work_checks/{id} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid
+        || resource.data.status == 'confirmed'
+        || (request.auth.token.email_verified == true && request.auth.token.email == resource.data.email));
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && companyEmail(request.resource.data.email)
+        && request.resource.data.email != request.auth.token.email;
+      allow update: if verifiedCompanyUser() && request.auth.token.email == resource.data.email
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'answeredAt'])
+        && request.resource.data.status in ['confirmed', 'declined'];
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     match /{document=**} {

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm work experience · CareerMate</title>
+<style>
+  :root { --bg:#F4F6FB; --card:#fff; --text:#0F172A; --muted:#64748B; --blue:#2563EB; --green:#15803D; --red:#B91C1C; --line:#E2E8F0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0B1220; --card:#111A2E; --text:#E5E9F2; --muted:#94A3B8; --line:#1E293B; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width:460px; margin:0 auto; padding:24px 16px 48px; }
+  .brand { font-weight:800; color:var(--blue); letter-spacing:.2px; }
+  h1 { font-size:22px; margin:6px 0 4px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; margin-top:16px; }
+  label { display:block; font-size:13px; font-weight:700; color:var(--muted); margin:12px 0 4px; }
+  input { width:100%; padding:12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--text); font-size:16px; }
+  button { width:100%; margin-top:14px; padding:13px; border:0; border-radius:12px; background:var(--blue); color:#fff; font-weight:800; font-size:16px; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--blue); border:1px solid var(--line); }
+  button.red { background:var(--red); }
+  button:disabled { opacity:.6; }
+  .muted { color:var(--muted); font-size:14px; }
+  .msg { margin-top:12px; font-size:14px; }
+  .err { color:var(--red); }
+  .ok { color:var(--green); font-weight:700; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .row b { text-align:right; }
+  .hidden { display:none; }
+  a { color:var(--blue); }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">CareerMate</div>
+  <h1>Confirm work experience</h1>
+  <p class="muted">Someone you worked with asked you to confirm their job. It takes a minute. Your email is only used to prove you work at the company.</p>
+
+  <!-- Step 1: email + password -->
+  <section id="s-login" class="card hidden">
+    <label for="email">Your company email</label>
+    <input id="email" type="email" autocomplete="email" placeholder="name@company.com">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="At least 6 characters">
+    <p class="muted">New here? Choose any password. Used this page before? Use the same one.</p>
+    <button id="b-login">Continue</button>
+    <button id="b-forgot" class="ghost hidden">Forgot password? Email me a reset link</button>
+    <div id="m-login" class="msg"></div>
+  </section>
+
+  <!-- Step 2: verify email -->
+  <section id="s-verify" class="card hidden">
+    <p>We sent a link to <b id="v-email"></b>. Open it, then come back here and tap the button.</p>
+    <p class="muted">Not there? Check Spam or Promotions.</p>
+    <button id="b-checked">I opened the link</button>
+    <button id="b-resend" class="ghost">Send the link again</button>
+    <div id="m-verify" class="msg"></div>
+  </section>
+
+  <!-- Step 3: confirm -->
+  <section id="s-confirm" class="card hidden">
+    <div class="row"><span class="muted">Person</span><b id="c-name"></b></div>
+    <div class="row"><span class="muted">Company</span><b id="c-company"></b></div>
+    <div class="row"><span class="muted">Role</span><b id="c-role"></b></div>
+    <div class="row"><span class="muted">Period</span><b id="c-period"></b></div>
+    <p>Did this person work at your company in this role?</p>
+    <button id="b-yes">Yes, this is correct</button>
+    <button id="b-no" class="red">No, this is not correct</button>
+    <div id="m-confirm" class="msg"></div>
+  </section>
+
+  <section id="s-done" class="card hidden">
+    <p id="d-text" class="ok"></p>
+    <p class="muted">You can close this page. Thank you for helping!</p>
+  </section>
+
+  <section id="s-error" class="card hidden">
+    <p id="e-text" class="err"></p>
+  </section>
+
+  <p class="muted" style="margin-top:20px">Signed in as <span id="who">—</span> · <a href="#" id="b-out">Sign out</a></p>
+</main>
+
+<script src="config.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendEmailVerification, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const $ = (id) => document.getElementById(id);
+const show = (id) => ['s-login', 's-verify', 's-confirm', 's-done', 's-error'].forEach((s) => $(s).classList.toggle('hidden', s !== id));
+const params = new URLSearchParams(location.search);
+const checkId = params.get('id');
+$('email').value = params.get('e') || '';
+
+const FREE = /@(gmail|googlemail|yahoo|ymail|rediffmail|outlook|hotmail|live|msn|icloud|me|aol|proton|protonmail|zoho|zohomail|gmx|mail|yandex|tutanota)\./i;
+const TEST = ['ksuraj.th@gmail.com'];
+
+function fail(text) { $('e-text').textContent = text; show('s-error'); }
+
+if (!checkId) {
+  fail('This link is incomplete. Please ask the person to send it again.');
+} else if (!window.FIREBASE_CONFIG) {
+  fail('This page is not set up yet. Please try again later.');
+} else {
+  start();
+}
+
+function start() {
+  const app = initializeApp(window.FIREBASE_CONFIG);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  let sentOnce = false;
+
+  onAuthStateChanged(auth, async (user) => {
+    $('who').textContent = user ? user.email : '—';
+    if (!user) return show('s-login');
+    if (!user.emailVerified) {
+      $('v-email').textContent = user.email;
+      if (!sentOnce) { sentOnce = true; try { await sendEmailVerification(user); } catch (e) { /* already sent recently */ } }
+      return show('s-verify');
+    }
+    await loadCheck(user);
+  });
+
+  async function loadCheck(user) {
+    try {
+      await user.getIdToken(true);
+      const snap = await getDoc(doc(db, 'work_checks', checkId));
+      if (!snap.exists()) return fail('This request was removed.');
+      const d = snap.data();
+      if (d.status !== 'pending') {
+        $('d-text').textContent = d.status === 'confirmed' ? 'Already confirmed. Thank you!' : 'You already answered this request.';
+        return show('s-done');
+      }
+      $('c-name').textContent = d.name || 'Not given';
+      $('c-company').textContent = d.company;
+      $('c-role').textContent = d.role;
+      $('c-period').textContent = `${d.from} – ${d.to}`;
+      show('s-confirm');
+    } catch (e) {
+      fail(`This request was sent to a different email. You are signed in as ${user.email}. Sign out and use the email the request was sent to.`);
+    }
+  }
+
+  $('b-login').onclick = async () => {
+    const email = $('email').value.trim().toLowerCase();
+    const pw = $('pw').value;
+    $('m-login').textContent = '';
+    $('m-login').className = 'msg err';
+    if (!email.includes('@')) return ($('m-login').textContent = 'Enter your email.');
+    if (FREE.test(email) && !TEST.includes(email)) return ($('m-login').textContent = 'Please use your company email, not Gmail/Yahoo.');
+    if (pw.length < 6) return ($('m-login').textContent = 'Password must be at least 6 characters.');
+    $('b-login').disabled = true;
+    try {
+      await createUserWithEmailAndPassword(auth, email, pw);
+    } catch (e) {
+      if (e.code === 'auth/email-already-in-use') {
+        try { await signInWithEmailAndPassword(auth, email, pw); }
+        catch (e2) {
+          $('m-login').textContent = 'Wrong password for this email.';
+          $('b-forgot').classList.remove('hidden');
+        }
+      } else {
+        $('m-login').textContent = 'Could not continue: ' + (e.code || e.message);
+      }
+    } finally {
+      $('b-login').disabled = false;
+    }
+  };
+
+  $('b-forgot').onclick = async () => {
+    try {
+      await sendPasswordResetEmail(auth, $('email').value.trim().toLowerCase());
+      $('m-login').className = 'msg ok';
+      $('m-login').textContent = 'Reset link sent. Set a new password, then come back here.';
+    } catch (e) { $('m-login').textContent = 'Could not send: ' + (e.code || e.message); }
+  };
+
+  $('b-checked').onclick = async () => {
+    $('m-verify').textContent = '';
+    await auth.currentUser.reload();
+    if (auth.currentUser.emailVerified) return loadCheck(auth.currentUser);
+    $('m-verify').className = 'msg err';
+    $('m-verify').textContent = 'Not verified yet. Open the link in the email first.';
+  };
+
+  $('b-resend').onclick = async () => {
+    try {
+      await sendEmailVerification(auth.currentUser);
+      $('m-verify').className = 'msg ok';
+      $('m-verify').textContent = 'Sent again.';
+    } catch (e) {
+      $('m-verify').className = 'msg err';
+      $('m-verify').textContent = 'Please wait a few minutes before trying again.';
+    }
+  };
+
+  async function answer(status) {
+    $('b-yes').disabled = $('b-no').disabled = true;
+    try {
+      await updateDoc(doc(db, 'work_checks', checkId), { status, answeredAt: serverTimestamp() });
+      $('d-text').textContent = status === 'confirmed' ? 'Confirmed. Thank you!' : 'Got it — marked as not correct.';
+      show('s-done');
+    } catch (e) {
+      $('m-confirm').className = 'msg err';
+      $('m-confirm').textContent = 'Could not save. Only the email this request was sent to can answer it.';
+      $('b-yes').disabled = $('b-no').disabled = false;
+    }
+  }
+  $('b-yes').onclick = () => answer('confirmed');
+  $('b-no').onclick = () => answer('declined');
+
+  $('b-out').onclick = async (ev) => { ev.preventDefault(); await signOut(auth); };
+}
+</script>
+</body>
+</html>

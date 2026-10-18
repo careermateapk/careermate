@@ -14,3 +14,4 @@ build/
 /macos/
 /windows/
 pubspec.lock
+site/config.js

@@ -104,6 +104,8 @@ class _Tools extends StatelessWidget {
       ('🛡️', 'Skill tests', 'Earn badges', Routes.skills, const [Color(0xFF14532D), Color(0xFF166534)]),
       ('⚖️', 'Compare offers', 'In-hand, bond, notice', Routes.offers, const [Color(0xFF4C1D95), Color(0xFF6D28D9)]),
       ('📄', 'CV maker', '40 templates', Routes.cvMaker, const [Color(0xFF0E7490), Color(0xFF0F766E)]),
+      ('🤝', 'Referrals', 'Ask people inside', Routes.referrals, const [Color(0xFF9A3412), Color(0xFFC2410C)]),
+      ('✅', 'Verify experience', 'Manager confirms', Routes.verifyWork, const [Color(0xFF065F46), Color(0xFF047857)]),
     ];
     return GridView.count(
       crossAxisCount: 2,
