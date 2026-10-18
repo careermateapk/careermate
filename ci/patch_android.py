@@ -61,4 +61,10 @@ pathlib.Path("android/app/proguard-rules.pro").write_text("""
 -dontwarn com.google.mlkit.vision.text.korean.**
 -keep class com.google.mlkit.** { *; }
 -dontwarn com.google.android.play.core.**
+# Flutter plugins talk to Dart through generated code; R8 must not rename or drop it
+# (shared_preferences crashed at start with NoSuchMethodError on getAll).
+-keep class io.flutter.plugins.** { *; }
+-keep interface io.flutter.plugins.** { *; }
+-keep class dev.flutter.pigeon.** { *; }
+-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
 """)
